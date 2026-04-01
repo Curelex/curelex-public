@@ -180,7 +180,9 @@
         }
         async function loadDoctors() {
             try {
-                const res = await fetch("http://localhost:5000/api/doctors/all");
+                const res = await fetch("http://localhost:5000/api/doctors/all", { 
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` } 
+                });
                 const data = await res.json();
                 let doctors;
                 if (data.success == true) {
