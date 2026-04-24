@@ -82,22 +82,25 @@ export default function PatientDashboard() {
 
       <main className="dashboard-main">
         {/* Quick Stats */}
-        <div className="quick-stats">
-          {[
-            { icon: 'fa-calendar-check', num: stats.upcoming, label: 'Upcoming Appointments' },
-            { icon: 'fa-prescription-bottle', num: stats.prescriptions, label: 'Prescriptions' },
-            { icon: 'fa-file-medical', num: stats.total, label: 'Total Appointments' },
-            { icon: 'fa-user-md', num: stats.doctors, label: 'Doctors Consulted' },
-          ].map(s => (
-            <div className="stat-card" key={s.label}>
-              <i className={`fas ${s.icon}`}></i>
-              <div className="stat-info">
-                <span className="stat-number">{s.num}</span>
-                <span className="stat-label">{s.label}</span>
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* Quick Stats */}
+<div className="quick-stats">
+  {[
+    { icon: 'fa-calendar-check', num: stats.upcoming, label: 'Upcoming Appointments' },
+    { icon: 'fa-prescription-bottle', num: stats.prescriptions, label: 'Prescriptions' },
+    { icon: 'fa-file-medical', num: stats.total, label: 'Total Appointments' },
+    { icon: 'fa-user-md', num: stats.doctors, label: 'Doctors Consulted' },
+  ].map(s => (
+    <div className="stat-card" key={s.label}>
+      <div className="stat-icon-wrap">
+        <i className={`fas ${s.icon}`}></i>
+      </div>
+      <div className="stat-info">
+        <span className="stat-number">{s.num}</span>
+        <span className="stat-label">{s.label}</span>
+      </div>
+    </div>
+  ))}
+</div>
 
         <div className="dashboard-grid">
           {/* Symptoms */}
