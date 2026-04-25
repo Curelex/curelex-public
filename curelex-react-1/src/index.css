@@ -5442,6 +5442,7 @@ body {
     display: grid !important;
     grid-template-columns: repeat(6, 1fr) !important;
     gap: 14px !important;
+    
   }
 
   .consult-card {
@@ -5537,6 +5538,7 @@ body {
     display: flex !important;
     flex-direction: row !important;
     overflow-x: auto !important;
+    max-width: 80vw;
     gap: 8px !important;
     padding-bottom: 6px !important;
     scrollbar-width: none !important;
