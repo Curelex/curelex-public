@@ -262,6 +262,35 @@ const Home = () => {
         </div>
       </section>
 
+    {/* Consult Specialities Section */}
+<section className="consult-section">
+  <div className="consult-header">
+    <div>
+      <h2>Consult top doctors online for any health concern</h2>
+      <p>Private online consultations with verified doctors in all specialists</p>
+    </div>
+    <button className="btn-view-all">View All Specialities</button>
+  </div>
+  <div className="consult-grid">
+    {[
+      { label: 'Period doubts or Pregnancy', icon: 'fa-venus', color: '#f9a8d4' },
+      { label: 'Acne, pimple or skin issues', icon: 'fa-face-meh', color: '#fcd34d' },
+      { label: 'Performance issues in bed', icon: 'fa-heart-pulse', color: '#f87171' },
+      { label: 'Cold, cough or fever', icon: 'fa-head-side-cough', color: '#93c5fd' },
+      { label: 'Child not feeling well', icon: 'fa-baby', color: '#86efac' },
+      { label: 'Depression or anxiety', icon: 'fa-brain', color: '#c4b5fd' },
+    ].map((item, i) => (
+      <div className="consult-card" key={i}>
+        <div className="consult-img-wrap" style={{ background: item.color + '33' }}>
+          <i className={`fas ${item.icon}`} style={{ fontSize: 36, color: item.color }}></i>
+        </div>
+        <p>{item.label}</p>
+        <button className="consult-now-btn">CONSULT NOW</button>
+      </div>
+    ))}
+  </div>
+</section>
+
       {/* Why Curelex Section (about-visual cards only) */}
       <section className="about" id="about">
         <div className="section-header">
