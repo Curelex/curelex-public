@@ -793,8 +793,8 @@ section {
     width: 150px;
     height: auto;
     margin: 0 auto var(--spacing-xl);
-    background: var(--gradient-primary);
-    border-radius: var(--radius-2xl);
+    /* background: var(--gradient-primary); */
+    /* border-radius: var(--radius-2xl); */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -4574,7 +4574,7 @@ body {
 @media (max-width: 768px) {
   /* Fix broken logo */
   .logo-img {
-    height: 40px !important;
+    height: 50px !important;
     width: auto !important;
     object-fit: contain !important;
   }
