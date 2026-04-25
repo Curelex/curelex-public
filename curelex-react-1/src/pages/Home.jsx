@@ -23,8 +23,7 @@ const Home = () => {
   const [patientLogin, setPatientLogin] = useState({ email: '', password: '' });
   const [doctorLogin, setDoctorLogin] = useState({ email: '', password: '' });
   const [patientSignUp, setPatientSignUp] = useState({
-    fullName: '', age: '', gender: '', mobile: '', email: '',
-    address: '', emergency: '', aadhaar: '', password: '', confirmPassword: ''
+    fullName: '', mobile: '', email: '', password: '' 
   });
   const [doctorSignUp, setDoctorSignUp] = useState({
     fullName: '', email: '', age: '', gender: '', specialization: '',
@@ -87,17 +86,11 @@ const Home = () => {
 
   const handlePatientSignUp = async (e) => {
     e.preventDefault();
-    if (patientSignUp.password !== patientSignUp.confirmPassword) {
-      showToast('Passwords do not match!', 'error');
-      return;
-    }
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
     const newPatient = {
       id: 'P' + Date.now(), name: patientSignUp.fullName, email: patientSignUp.email,
-      age: patientSignUp.age, gender: patientSignUp.gender, mobile: patientSignUp.mobile,
-      address: patientSignUp.address, emergency: patientSignUp.emergency,
-      aadhaar: patientSignUp.aadhaar, password: patientSignUp.password, role: 'patient'
+      mobile: patientSignUp.mobile, password: patientSignUp.password, role: 'patient'
     };
     const existingUsers = JSON.parse(localStorage.getItem('curelex_users') || '[]');
     existingUsers.push(newPatient);
@@ -106,7 +99,7 @@ const Home = () => {
     setShowPatientSignUp(false);
     setShowLoginModal(true);
     setActiveTab('patient-login');
-    setPatientSignUp({ fullName: '', age: '', gender: '', mobile: '', email: '', address: '', emergency: '', aadhaar: '', password: '', confirmPassword: '' });
+    setPatientSignUp({ fullName: '', mobile: '', email: '', password: '' });
     setLoading(false);
   };
 
@@ -494,7 +487,6 @@ const Home = () => {
         <div className="modal active" id="roleSelectionModal">
           <div className="modal-overlay" onClick={() => setShowRoleModal(false)}></div>
           <div className="modal-container modal-small">
-            <button className="modal-close" onClick={() => setShowRoleModal(false)}>&times;</button>
             <div className="auth-header">
               <h2>Select Login Type</h2>
               <p>Choose your account type to proceed</p>
@@ -525,7 +517,6 @@ const Home = () => {
         <div className="modal active" id="loginModal">
           <div className="modal-overlay" onClick={() => setShowLoginModal(false)}></div>
           <div className="modal-container">
-            <button className="modal-close" onClick={() => setShowLoginModal(false)}>&times;</button>
             <div className="auth-tabs">
               <button className={`auth-tab ${activeTab === 'patient-login' ? 'active' : ''}`} onClick={() => setActiveTab('patient-login')}>Patient</button>
               <button className={`auth-tab ${activeTab === 'doctor-login' ? 'active' : ''}`} onClick={() => setActiveTab('doctor-login')}>Doctor</button>
@@ -588,7 +579,6 @@ const Home = () => {
         <div className="modal active" id="patientSignUpModal">
           <div className="modal-overlay" onClick={() => setShowPatientSignUp(false)}></div>
           <div className="modal-container modal-large">
-            <button className="modal-close" onClick={() => setShowPatientSignUp(false)}>&times;</button>
             <div className="auth-header">
               <h2>Patient Registration</h2>
               <p>Create your account to get started</p>
@@ -600,19 +590,6 @@ const Home = () => {
                   <input type="text" id="patientFullName" placeholder="Enter your full name" value={patientSignUp.fullName} onChange={(e) => setPatientSignUp({ ...patientSignUp, fullName: e.target.value })} required />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="patientAge">Age *</label>
-                  <input type="number" id="patientAge" placeholder="Enter your age" min="1" max="150" value={patientSignUp.age} onChange={(e) => setPatientSignUp({ ...patientSignUp, age: e.target.value })} required />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="patientGender">Gender *</label>
-                  <select id="patientGender" value={patientSignUp.gender} onChange={(e) => setPatientSignUp({ ...patientSignUp, gender: e.target.value })} required>
-                    <option value="">Select gender</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-                <div className="form-group">
                   <label htmlFor="patientMobile">Mobile Number *</label>
                   <input type="tel" id="patientMobile" placeholder="Enter mobile number" value={patientSignUp.mobile} onChange={(e) => setPatientSignUp({ ...patientSignUp, mobile: e.target.value })} required />
                 </div>
@@ -621,24 +598,8 @@ const Home = () => {
                   <input type="email" id="patientEmailSignup" placeholder="Enter your email" value={patientSignUp.email} onChange={(e) => setPatientSignUp({ ...patientSignUp, email: e.target.value })} required />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="patientAddress">Address *</label>
-                  <input type="text" id="patientAddress" placeholder="Enter your address" value={patientSignUp.address} onChange={(e) => setPatientSignUp({ ...patientSignUp, address: e.target.value })} required />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="patientEmergency">Emergency Contact *</label>
-                  <input type="tel" id="patientEmergency" placeholder="Emergency contact number" value={patientSignUp.emergency} onChange={(e) => setPatientSignUp({ ...patientSignUp, emergency: e.target.value })} required />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="patientAadhaar">Aadhaar Number *</label>
-                  <input type="text" id="patientAadhaar" placeholder="Enter 12-digit Aadhaar" maxLength="12" value={patientSignUp.aadhaar} onChange={(e) => setPatientSignUp({ ...patientSignUp, aadhaar: e.target.value })} required />
-                </div>
-                <div className="form-group">
                   <label htmlFor="patientCreatePassword">Create Password *</label>
                   <input type="password" id="patientCreatePassword" placeholder="Create password" value={patientSignUp.password} onChange={(e) => setPatientSignUp({ ...patientSignUp, password: e.target.value })} required />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="patientConfirmPassword">Confirm Password *</label>
-                  <input type="password" id="patientConfirmPassword" placeholder="Confirm password" value={patientSignUp.confirmPassword} onChange={(e) => setPatientSignUp({ ...patientSignUp, confirmPassword: e.target.value })} required />
                 </div>
               </div>
               <button type="submit" className="btn btn-primary btn-full" disabled={loading}>{loading ? 'Registering...' : 'Register'}</button>
@@ -653,7 +614,6 @@ const Home = () => {
         <div className="modal active" id="doctorSignUpModal">
           <div className="modal-overlay" onClick={() => setShowDoctorSignUp(false)}></div>
           <div className="modal-container modal-large">
-            <button className="modal-close" onClick={() => setShowDoctorSignUp(false)}>&times;</button>
             <div className="auth-header">
               <h2>Doctor Registration</h2>
               <p>Join our network of medical professionals</p>
