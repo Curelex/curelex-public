@@ -11,6 +11,7 @@ import DoctorDashboard   from './pages/DoctorDashboard'
 import Telemedicine      from './pages/Telemedicine'
 import About             from './pages/About'
 import AdminDashboard    from './pages/AdminDashboard'
+import DoctorProfileView from './pages/DoctorProfileView'
 
 // Optional — only import if file exists
 let DoctorProfileForm = null
@@ -38,6 +39,9 @@ function AppRoutes() {
       {DoctorProfileForm && (
         <Route path="/doctor-profile" element={<DoctorProfileForm />} />
       )}
+
+      {/* Doctor Profile View/Edit */}
+      <Route path="/doctor-profile-view" element={<ProtectedRoute><DoctorProfileView /></ProtectedRoute>} />
 
       {/* Protected */}
       <Route

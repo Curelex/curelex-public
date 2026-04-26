@@ -1241,7 +1241,7 @@ export default function DoctorDashboard() {
           </div>
 
           {/* Doctor dropdown */}
-          <div className="pd-user-menu">
+          <div className="pd-user-menu" style={{ display: 'flex' }}>
             <div className="pd-user-menu__trigger" onClick={() => setUserDropdown(o => !o)}>
               <div className="pd-user-menu__avatar">{initials}</div>
               <span className="pd-user-menu__name">Dr. {d?.name}</span>
@@ -1262,7 +1262,7 @@ export default function DoctorDashboard() {
                       : (
                         <button key={item.key}
                           className={`pd-user-dropdown__item${activeNav === item.key ? ' active' : ''}`}
-                          onClick={() => { setActiveNav(item.key); setUserDropdown(false); showToast(`${item.label} coming soon!`, 'info') }}>
+                          onClick={() => { setActiveNav(item.key); setUserDropdown(false); if (item.key === 'profile') { navigate('/doctor-profile-view') } else { showToast(`${item.label} coming soon!`, 'info') } }}>
                           <i className={`fas ${item.icon}`}></i> {item.label}
                         </button>
                       )
