@@ -29,16 +29,6 @@ const OFFERINGS = [
   { icon: 'fa-hospital',        label: 'Surgeries',                   sub: 'Safe and trusted centres',    color: '#7c3aed' },
 ]
 
-/* ─── Consult specialities ──────────────────────────────────── */
-const CONSULTS = [
-  { label: 'Period doubts or Pregnancy', icon: 'fa-venus',            color: '#f9a8d4', bg: '#fdf2f8' },
-  { label: 'Acne, pimple or skin issues',icon: 'fa-face-meh',         color: '#f59e0b', bg: '#fffbeb' },
-  { label: 'Performance issues',         icon: 'fa-heart-pulse',      color: '#ef4444', bg: '#fef2f2' },
-  { label: 'Cold, cough or fever',       icon: 'fa-head-side-cough',  color: '#3b82f6', bg: '#eff6ff' },
-  { label: 'Child not feeling well',     icon: 'fa-baby',             color: '#22c55e', bg: '#f0fdf4' },
-  { label: 'Depression or anxiety',      icon: 'fa-brain',            color: '#7c3aed', bg: '#f5f3ff' },
-]
-
 /* ─── Static follow-up history ──────────────────────────────── */
 const HISTORY = [
   { title: 'Follow-up Complete',    date: 'Jan 10, 2024', doctor: 'Dr. Sarah Johnson' },
@@ -82,13 +72,76 @@ export default function PatientDashboard() {
   const [sidebarOpen,     setSidebarOpen]     = useState(false)
   const [activeNav,       setActiveNav]       = useState('home')
   const [userDropdown,    setUserDropdown]    = useState(false)
+  const [userLocation,    setUserLocation]    = useState({ city: 'Detecting…', loading: true })
 
   /* ── redirect if no user ── */
   useEffect(() => {
     if (!currentUser) { navigate('/'); return }
     loadAppointments()
     loadPrescriptions()
+    detectLocation()
   }, [])
+
+  /* Auto-detect location */
+  async function detectLocation() {
+    const cached = localStorage.getItem('curelex_location')
+
+    if (cached) {
+      setUserLocation({ city: cached, loading: false })
+    } else {
+      setUserLocation({ city: 'Detecting...', loading: true })
+    }
+
+    // Try multiple APIs in sequence — all HTTPS + CORS-open
+    const APIs = [
+      async () => {
+        // ipwho.is — free, HTTPS, CORS open
+        const r = await fetch('https://ipwho.is/')
+        const d = await r.json()
+        console.log('[Location] ipwho.is:', d)
+        if (d.success && d.city) return d.city
+      },
+      async () => {
+        // geojs.io — free, HTTPS, CORS open
+        const r = await fetch('https://get.geojs.io/v1/ip/geo.json')
+        const d = await r.json()
+        console.log('[Location] geojs.io:', d)
+        if (d.city) return d.city
+        if (d.region) return d.region
+      },
+      async () => {
+        // ipapi.co — free tier, HTTPS, CORS open
+        const r = await fetch('https://ipapi.co/json/')
+        const d = await r.json()
+        console.log('[Location] ipapi.co:', d)
+        if (d.city) return d.city
+      },
+      async () => {
+        // ip-api.com via HTTPS
+        const r = await fetch('https://pro.ip-api.com/json?fields=city,regionName,status')
+        const d = await r.json()
+        console.log('[Location] ip-api.com:', d)
+        if (d.status === 'success' && d.city) return d.city
+      },
+    ]
+
+    for (const apiFn of APIs) {
+      try {
+        const city = await apiFn()
+        if (city) {
+          console.log('[Location] Resolved city:', city)
+          setUserLocation({ city, loading: false })
+          localStorage.setItem('curelex_location', city)
+          return
+        }
+      } catch (e) {
+        console.warn('[Location] API failed:', e.message)
+      }
+    }
+
+    // All failed — use cached or default
+    setUserLocation({ city: cached || 'Set Location', loading: false })
+  }
 
   /* ── close sidebar on resize ── */
   useEffect(() => {
@@ -128,7 +181,11 @@ export default function PatientDashboard() {
   }
 
   /* ── handlers ── */
-  const handleLogout = () => { logout(); navigate('/') }
+  const handleLogout = () => {
+    localStorage.removeItem('curelex_location') // clear cached location on logout
+    logout()
+    navigate('/')
+  }
 
   const handleAppointmentChoice = (flow) => {
     setAppointmentModal(false)
@@ -157,15 +214,22 @@ export default function PatientDashboard() {
           ════════════════════════ */}
       <header className="pd-topbar">
         <Link to="/" className="logo">
-                    <img className="logo-img" src="/assets/logo.png" alt="CURELEX" />
-                  </Link>
+          <img className="logo-img" src="/assets/logo.png" alt="CURELEX" />
+        </Link>
 
         <div className="pd-topbar__right">
-          {/* Location chip */}
-          <div className="pd-topbar__location">
-            <i className="fas fa-map-marker-alt"></i>
-            Bangalore
-            <i className="fas fa-chevron-down" style={{ fontSize: 10 }}></i>
+          {/* Location chip — auto-detected */}
+          <div
+            className="pd-topbar__location"
+            title="Click to refresh location"
+            onClick={detectLocation}
+            style={{ cursor: 'pointer' }}
+          >
+            <i className={`fas ${userLocation.loading ? 'fa-spinner fa-spin' : 'fa-map-marker-alt'}`}></i>
+            {userLocation.city}
+            {!userLocation.loading && (
+              <i className="fas fa-chevron-down" style={{ fontSize: 10 }}></i>
+            )}
           </div>
 
           {/* Search */}
@@ -174,7 +238,7 @@ export default function PatientDashboard() {
             <input type="text" placeholder="Search doctors, clinics, hospitals…" />
           </div>
 
-          {/* User dropdown — shown on mobile only (right side), hidden on desktop */}
+          {/* User dropdown */}
           <div className="pd-user-menu">
             <div
               className="pd-user-menu__trigger"
@@ -230,7 +294,7 @@ export default function PatientDashboard() {
             SIDEBAR
             ════════════════════════ */}
         <aside className={`pd-sidebar${sidebarOpen ? ' open' : ''}`}>
-            
+
           {/* Profile strip */}
           <div className="pd-sidebar__profile">
             <div className="pd-sidebar__avatar">{initials}</div>
@@ -317,60 +381,36 @@ export default function PatientDashboard() {
             </div>
           </div>
 
-          {/* ── Consult Specialities ── */}
-          {/* <div className="pd-consult">
-            <div className="pd-section-header">
-              <div>
-                <h2>Consult top doctors online for any health concern</h2>
-                <p>Private online consultations with verified doctors in all specialities</p>
-              </div>
-              <button className="pd-view-all">View All Specialities</button>
-            </div>
-            <div className="pd-consult-grid">
-              {CONSULTS.map(c => (
-                <div className="pd-consult-card" key={c.label}>
-                  <div
-                    className="pd-consult-card__icon"
-                    style={{ background: c.bg, color: c.color }}
-                  >
-                    <i className={`fas ${c.icon}`}></i>
-                  </div>
-                  <p>{c.label}</p>
-                  <button className="pd-consult-now">CONSULT NOW</button>
+          {/* Consult Specialities */}
+          <div className="consult-section-wrapper">
+            <section className="consult-section">
+              <div className="consult-header">
+                <div>
+                  <h2>Consult top doctors online for any health concern</h2>
+                  <p>Private online consultations with verified doctors in all specialists</p>
                 </div>
-              ))}
-            </div>
-          </div> */}
-          {/* Consult Specialities - OUTSIDE dashboard-grid, full width */}
-        <div className="consult-section-wrapper">
-          <section className="consult-section">
-            <div className="consult-header">
-              <div>
-                <h2>Consult top doctors online for any health concern</h2>
-                <p>Private online consultations with verified doctors in all specialists</p>
+                <button className="btn-view-all">View All Specialities</button>
               </div>
-              <button className="btn-view-all">View All Specialities</button>
-            </div>
-            <div className="consult-grid">
-              {[
-                { label: 'Period doubts or Pregnancy', icon: 'fa-venus', color: '#f9a8d4' },
-                { label: 'Acne, pimple or skin issues', icon: 'fa-face-meh', color: '#fcd34d' },
-                { label: 'Performance issues in bed', icon: 'fa-heart-pulse', color: '#f87171' },
-                { label: 'Cold, cough or fever', icon: 'fa-head-side-cough', color: '#93c5fd' },
-                { label: 'Child not feeling well', icon: 'fa-baby', color: '#86efac' },
-                { label: 'Depression or anxiety', icon: 'fa-brain', color: '#c4b5fd' },
-              ].map((item, i) => (
-                <div className="consult-card" key={i}>
-                  <div className="consult-img-wrap" style={{ background: item.color + '33' }}>
-                    <i className={`fas ${item.icon}`} style={{ fontSize: 36, color: item.color }}></i>
+              <div className="consult-grid">
+                {[
+                  { label: 'Period doubts or Pregnancy', icon: 'fa-venus', color: '#f9a8d4' },
+                  { label: 'Acne, pimple or skin issues', icon: 'fa-face-meh', color: '#fcd34d' },
+                  { label: 'Performance issues in bed', icon: 'fa-heart-pulse', color: '#f87171' },
+                  { label: 'Cold, cough or fever', icon: 'fa-head-side-cough', color: '#93c5fd' },
+                  { label: 'Child not feeling well', icon: 'fa-baby', color: '#86efac' },
+                  { label: 'Depression or anxiety', icon: 'fa-brain', color: '#c4b5fd' },
+                ].map((item, i) => (
+                  <div className="consult-card" key={i}>
+                    <div className="consult-img-wrap" style={{ background: item.color + '33' }}>
+                      <i className={`fas ${item.icon}`} style={{ fontSize: 36, color: item.color }}></i>
+                    </div>
+                    <p>{item.label}</p>
+                    <button className="consult-now-btn">CONSULT NOW</button>
                   </div>
-                  <p>{item.label}</p>
-                  <button className="consult-now-btn">CONSULT NOW</button>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
+                ))}
+              </div>
+            </section>
+          </div>
 
           {/* ── Dashboard Cards Grid ── */}
           <div className="pd-grid">

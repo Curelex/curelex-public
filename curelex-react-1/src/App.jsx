@@ -5,11 +5,11 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Home from './pages/Home';
 import PatientLogin from './pages/PatientLogin';
 import DoctorLogin from './pages/DoctorLogin';
-import DoctorRegister from './pages/DoctorRegister';
 import PatientDashboard from './pages/PatientDashboard';
 import DoctorDashboard from './pages/DoctorDashboard';
 import Telemedicine from './pages/Telemedicine';
 import About from './pages/About';
+import DoctorProfileForm from './pages/DoctorProfileForm';
 
 function ProtectedRoute({ children }) {
   const { currentUser } = useAuth();
@@ -23,7 +23,7 @@ function AppRoutes() {
       <Route path="/" element={<Home />} />
       <Route path="/patient-login" element={<PatientLogin />} />
       <Route path="/doctor-login" element={<DoctorLogin />} />
-      <Route path="/doctor-register" element={<DoctorRegister />} />
+      <Route path="/doctor-profile" element={<DoctorProfileForm />} />
       <Route path="/about" element={<About />} />
 
       {/* Protected */}

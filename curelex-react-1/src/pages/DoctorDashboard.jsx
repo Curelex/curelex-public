@@ -18,7 +18,7 @@ function PrescriptionModal({ patientId, doctorId, token, onClose, onSuccess }) {
     fetch(`${API}/medicines/all`, { headers: authHeaders(token) })
       .then(r => r.json())
       .then(d => setAllMedicines(Array.isArray(d) ? d : (d.medicines || [])))
-      .catch(() => {})
+      .catch(() => { })
   }, [])
 
   const handleSearch = (val) => {
@@ -159,8 +159,10 @@ function MeetingLinkCard({ link, appointment, onClose }) {
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
         Patient #{appointment?.patientId} · {new Date(appointment?.appointmentTime).toLocaleString()}
       </p>
-      <div style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 8,
-        padding: '8px 10px', fontSize: 11, wordBreak: 'break-all', marginBottom: 10, color: 'var(--text-secondary)' }}>
+      <div style={{
+        background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 8,
+        padding: '8px 10px', fontSize: 11, wordBreak: 'break-all', marginBottom: 10, color: 'var(--text-secondary)'
+      }}>
         {link}
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
@@ -176,9 +178,142 @@ function MeetingLinkCard({ link, appointment, onClose }) {
   )
 }
 
+// ── Status Banner Component (replaces quick stats) ───────────────────────────
+// ── Status Banner Component (replaces quick stats) ───────────────────────────
+function StatusBanner({ status, onAction, profilePhoto, doctorName }) {
+  if (status === 'complete') return null
+
+  return (
+    <>
+      <div className="status-banner" style={{
+        background: status === 'incomplete' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)',
+        borderRadius: 16,
+        padding: '1.5rem 2rem',
+        marginBottom: '1rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '1rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{
+            width: 48,
+            height: 48,
+            background: 'rgba(255,255,255,0.2)',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <i className={`fas ${status === 'incomplete' ? 'fa-user-edit' : 'fa-clock'}`} style={{ fontSize: 24, color: 'white' }}></i>
+          </div>
+          <div>
+            <h3 style={{ color: 'white', marginBottom: 4, fontSize: '1.1rem' }}>
+              {status === 'incomplete' ? 'Complete Your Profile' : 'Awaiting Admin Approval'}
+            </h3>
+            <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: 14, margin: 0 }}>
+              {status === 'incomplete'
+                ? 'Please complete your profile to start using the dashboard and connect with patients.'
+                : 'Your profile has been submitted and is pending admin approval. You will be notified once approved.'}
+            </p>
+          </div>
+        </div>
+        <button
+          className="btn"
+          onClick={onAction}
+          style={{
+            background: 'white',
+            color: status === 'incomplete' ? '#667eea' : '#f59e0b',
+            border: 'none',
+            padding: '10px 24px',
+            fontWeight: 600
+          }}
+        >
+          <i className={`fas ${status === 'incomplete' ? 'fa-arrow-right' : 'fa-sync-alt'}`}></i>
+          {status === 'incomplete' ? ' Complete Profile' : ' Check Status'}
+        </button>
+      </div>
+
+      {/* Profile image and name below the banner - only for pending status */}
+      {status === 'pending' && profilePhoto && (
+  <div
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: '1rem',
+      padding: '1rem 1.5rem',
+      background: 'white',
+      borderRadius: '12px',
+      marginBottom: '2rem',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+      border: '1px solid var(--border)'
+    }}
+  >
+    <div style={{ flex: '1 1 250px' }}>
+      <div
+        style={{
+          fontWeight: 600,
+          fontSize: 'clamp(14px, 2vw, 16px)',
+          color: '#333'
+        }}
+      >
+        Good Evening
+      </div>
+
+      <div
+        style={{
+          fontWeight: 600,
+          fontSize: 'clamp(24px, 5vw, 42px)',
+          color: '#333',
+          wordBreak: 'break-word'
+        }}
+      >
+        Dr. {doctorName || 'Doctor'}
+      </div>
+
+      <div
+        style={{
+          fontSize: 'clamp(12px, 2vw, 14px)',
+          color: '#666'
+        }}
+      >
+        Profile submitted • Awaiting verification
+      </div>
+    </div>
+
+    <div
+      style={{
+        width: 'clamp(90px, 20vw, 150px)',
+        height: 'clamp(90px, 20vw, 150px)',
+        borderRadius: '50%',
+        overflow: 'hidden',
+        backgroundColor: '#f0f0f0',
+        flexShrink: 0,
+        margin: '0 auto'
+      }}
+    >
+      <img
+        src={profilePhoto}
+        alt="Profile"
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover'
+        }}
+      />
+    </div>
+  </div>
+)}
+    </>
+  )
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function DoctorDashboard() {
-  const { currentUser: doctor, token, logout } = useAuth()
+  const { currentUser: doctor, token, logout } = useAuth();
   const navigate = useNavigate()
   const showToast = useToast()
 
@@ -190,21 +325,104 @@ export default function DoctorDashboard() {
   const [requests, setRequests] = useState([])
   const [prescriptionModal, setPrescriptionModal] = useState(null)
   const [meetingCard, setMeetingCard] = useState(null)
+  const [profilePhoto, setProfilePhoto] = useState(null)
+
+
+  useEffect(() => {
+    // Load doctor data from localStorage
+    const storedDoctorData = localStorage.getItem('doctor-data')
+    if (storedDoctorData) {
+      const data = JSON.parse(storedDoctorData)
+
+      // Set profile photo if exists
+      if (data.profilePhoto) {
+        setProfilePhoto(data.profilePhoto)
+      }
+    }
+  }, [])
+
+  // Profile completion states
+  const [profileStatus, setProfileStatus] = useState({
+    isProfileComplete: false,
+    isApproved: false,
+    isLoading: true
+  })
 
   useEffect(() => {
     if (!doctor) { navigate('/'); return }
-    loadProfile()
-    loadAllApproved()
-    loadPrescriptions()
-    loadRequests()
+    checkDoctorProfileStatus()
   }, [])
+
+  async function checkDoctorProfileStatus() {
+    try {
+      // First check localStorage for doctor data
+      const storedDoctorData = localStorage.getItem('doctor-data')
+      const storedProfileComplete = localStorage.getItem('doctor-profile-complete')
+      const storedApproved = localStorage.getItem('doctor-approved')
+
+      if (storedDoctorData) {
+        const doctorData = JSON.parse(storedDoctorData)
+
+        // Check if profile is complete
+        const isComplete = doctorData &&
+          doctorData.specialization &&
+          doctorData.specialization !== '' &&
+          doctorData.experience &&
+          doctorData.experience !== '' &&
+          doctorData.qualification &&
+          doctorData.qualification !== '' &&
+          doctorData.regNumber &&
+          doctorData.regNumber !== ''
+
+        // Check if profile is approved
+        const isApproved = doctorData.isApproved === true
+
+        setProfileStatus({
+          isProfileComplete: isComplete,
+          isApproved: isApproved,
+          isLoading: false
+        })
+
+        // Load dashboard content if profile is complete AND approved
+        if (isComplete && isApproved) {
+          loadProfile()
+          loadAllApproved()
+          loadPrescriptions()
+          loadRequests()
+        }
+      } else {
+        // No stored doctor data
+        setProfileStatus({
+          isProfileComplete: false,
+          isApproved: false,
+          isLoading: false
+        })
+      }
+    } catch (err) {
+      console.error('Error checking profile status:', err)
+      setProfileStatus({
+        isProfileComplete: false,
+        isApproved: false,
+        isLoading: false
+      })
+    }
+  }
 
   async function loadProfile() {
     try {
+      // Try to fetch from API first
       const res = await fetch(`${API}/doctors/${doctor.id}`, { headers: authHeaders(token) })
       const data = await res.json()
       setProfile(data.doctor || data)
-    } catch { setProfile(doctor) }
+    } catch {
+      // Fallback to localStorage
+      const storedData = localStorage.getItem('doctor-data')
+      if (storedData) {
+        setProfile(JSON.parse(storedData))
+      } else {
+        setProfile(doctor)
+      }
+    }
   }
 
   async function loadAllApproved() {
@@ -282,8 +500,43 @@ export default function DoctorDashboard() {
     } catch (err) { showToast('Server error: ' + err.message, 'error') }
   }
 
+  const handleCompleteProfile = () => {
+    navigate('/doctor-profile')
+  }
+
+  const handleCheckStatus = () => {
+    checkDoctorProfileStatus()
+  }
+
   const handleLogout = () => { logout(); navigate('/') }
   const d = profile || doctor
+
+  // Don't render dashboard content while checking status
+  if (profileStatus.isLoading) {
+    return (
+      <div className="dashboard-page" style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <i className="fas fa-spinner fa-spin" style={{ fontSize: 48, color: 'var(--primary)' }}></i>
+          <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Determine status banner type
+  let bannerStatus = null
+  if (!profileStatus.isProfileComplete) {
+    bannerStatus = 'incomplete'
+  } else if (!profileStatus.isApproved) {
+    bannerStatus = 'pending'
+  }
+
+  const isContentVisible = profileStatus.isProfileComplete && profileStatus.isApproved
 
   return (
     <div className="dashboard-page doctor-dashboard">
@@ -295,7 +548,7 @@ export default function DoctorDashboard() {
             <div className="header-logo" style={{ marginRight: 'auto' }}>
               <i className="fas fa-heartbeat"></i> CURELEX
             </div>
-            <span>Welcome, Dr. {d?.name}</span>
+            <span>Welcome, Dr. {d?.name || doctor?.name}</span>
             <button className="btn btn-secondary btn-sm" onClick={handleLogout}>
               <i className="fas fa-sign-out-alt"></i> Logout
             </button>
@@ -309,215 +562,230 @@ export default function DoctorDashboard() {
           <p>Manage your patients and appointments</p>
         </div>
 
-        {/* Quick Stats */}
-        <div className="quick-stats">
-          {[
-            { icon: 'fa-users', num: stats.total, label: 'Total Patients' },
-            { icon: 'fa-calendar-check', num: stats.today, label: "Today's Appointments" },
-            { icon: 'fa-user-plus', num: stats.newMonth, label: 'New Patients This Month' },
-            { icon: 'fa-prescription-bottle-alt', num: stats.prescriptions, label: 'Total Prescriptions' },
-          ].map(s => (
-            <div className="stat-card" key={s.label}>
-              <i className={`fas ${s.icon}`}></i>
-              <div className="stat-info">
-                <span className="stat-number">{s.num}</span>
-                <span className="stat-label">{s.label}</span>
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* Status Banner - replaces quick stats when profile not complete/approved */}
+        {bannerStatus && (
+          <StatusBanner
+            status={bannerStatus}
+            onAction={bannerStatus === 'incomplete' ? handleCompleteProfile : handleCheckStatus}
+            profilePhoto={profilePhoto}
+            doctorName={d?.name || doctor?.name}
+          />
+        )}
 
-        <div className="dashboard-grid">
-          {/* Today's Schedule */}
-          <div className="dashboard-card full-width">
-            <div className="card-header">
-              <i className="fas fa-calendar-day"></i>
-              <h3>Today's Schedule</h3>
-            </div>
-            <div className="card-body">
-              <div className="schedule-timeline">
-                {schedule.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No appointments scheduled for today.</p>}
-                {schedule.map((appt, i) => {
-                  const aptTime = new Date(appt.appointmentTime)
-                  const diffMin = (aptTime - new Date()) / 60000
-                  const statusClass = diffMin < -30 ? 'completed' : diffMin <= 15 ? 'current' : 'upcoming'
-                  const label = { completed: 'Completed', current: 'Now', upcoming: 'Upcoming' }[statusClass]
-                  return (
-                    <div className={`schedule-item ${statusClass}`} key={i}>
-                      <div className="schedule-time">{formatTime(appt.appointmentTime)}</div>
-                      <div className="schedule-info">
-                        <h4>Patient #{appt.patientId}</h4>
-                        <p>{appt.symptoms || 'Consultation'}</p>
-                        <span className={`status ${statusClass}`}>{label}</span>
-                      </div>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        {appt.meetingLink && (
-                          <button className="btn btn-primary btn-sm" onClick={() => window.open(appt.meetingLink, '_blank')}>
-                            <i className="fas fa-video"></i> Join
-                          </button>
-                        )}
-                        <button className="btn btn-outline btn-sm"
-                          onClick={() => setPrescriptionModal({ patientId: appt.patientId, appointmentId: appt.id })}>
-                          <i className="fas fa-prescription"></i> Prescribe
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Patients */}
-          <div className="dashboard-card">
-            <div className="card-header">
-              <i className="fas fa-user-injured"></i>
-              <h3>Recent Patients</h3>
-            </div>
-            <div className="card-body">
-              <div className="patients-list">
-                {recentPatients.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No patients yet.</p>}
-                {recentPatients.map((a, i) => (
-                  <div className="patient-item" key={i}>
-                    <div className="patient-avatar"><i className="fas fa-user"></i></div>
-                    <div className="patient-info">
-                      <h4>Patient #{a.patientId}</h4>
-                      <p>Last: {formatDate(a.appointmentTime)}</p>
-                    </div>
-                    <button className="btn btn-outline btn-sm"
-                      onClick={() => setPrescriptionModal({ patientId: a.patientId, appointmentId: null })}>
-                      Prescribe
-                    </button>
+        {/* Only show dashboard content if profile is complete and approved */}
+        {isContentVisible ? (
+          <>
+            {/* Quick Stats */}
+            <div className="quick-stats">
+              {[
+                { icon: 'fa-users', num: stats.total, label: 'Total Patients' },
+                { icon: 'fa-calendar-check', num: stats.today, label: "Today's Appointments" },
+                { icon: 'fa-user-plus', num: stats.newMonth, label: 'New Patients This Month' },
+                { icon: 'fa-prescription-bottle-alt', num: stats.prescriptions, label: 'Total Prescriptions' },
+              ].map(s => (
+                <div className="stat-card" key={s.label}>
+                  <i className={`fas ${s.icon}`}></i>
+                  <div className="stat-info">
+                    <span className="stat-number">{s.num}</span>
+                    <span className="stat-label">{s.label}</span>
                   </div>
-                ))}
-              </div>
-              <button className="btn btn-primary btn-full" style={{ marginTop: '1rem' }}
-                onClick={() => showToast('All patients view coming soon!', 'info')}>
-                <i className="fas fa-users"></i> View All Patients
-              </button>
+                </div>
+              ))}
             </div>
-          </div>
 
-          {/* Pending Prescriptions */}
-          <div className="dashboard-card">
-            <div className="card-header">
-              <i className="fas fa-prescription"></i>
-              <h3>Pending Prescriptions</h3>
-            </div>
-            <div className="card-body">
-              <div className="prescription-list">
-                {pendingPrescriptions.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No pending prescriptions.</p>}
-                {pendingPrescriptions.map((p, i) => (
-                  <div className="prescription-item pending" key={i}>
-                    <div className="prescription-icon"><i className="fas fa-clock"></i></div>
-                    <div className="prescription-info">
-                      <h4>{p.patientName || 'Patient'}</h4>
-                      <p>Pending since: {p.createdAt ? formatDate(p.createdAt) : 'N/A'}</p>
-                    </div>
-                    <button className="btn btn-primary btn-sm" onClick={() => showToast('Opening editor...', 'info')}>Write</button>
-                  </div>
-                ))}
-              </div>
-              <button className="btn btn-primary btn-full" style={{ marginTop: '1rem' }}
-                onClick={() => {
-                  const pid = window.prompt('Enter Patient ID:')
-                  if (pid) setPrescriptionModal({ patientId: parseInt(pid), appointmentId: null })
-                }}>
-                <i className="fas fa-plus"></i> Write New Prescription
-              </button>
-            </div>
-          </div>
-
-          {/* Patient Requests */}
-          <div className="dashboard-card">
-            <div className="card-header">
-              <i className="fas fa-user-plus"></i>
-              <h3>New Patient Requests</h3>
-            </div>
-            <div className="card-body">
-              <div className="request-list">
-                {requests.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No new patient requests.</p>}
-                {requests.map((r, i) => (
-                  <div className="request-item" key={i}>
-                    <div className="request-avatar"><i className="fas fa-user"></i></div>
-                    <div className="request-info">
-                      <h4>{r.patientName || r.patient?.name || 'Patient'}</h4>
-                      <p>{r.type || r.reason || 'Consultation'}</p>
-                      <span className="request-time">Requested: {r.createdAt ? timeAgoString(r.createdAt) : 'Recently'}</span>
-                    </div>
-                    <div className="request-actions">
-                      <button className="btn btn-primary btn-sm" title="Accept"
-                        onClick={() => respondToRequest(r._id || r.id, 'accepted')}>
-                        <i className="fas fa-check"></i>
-                      </button>
-                      <button className="btn btn-outline btn-sm" title="Reject"
-                        onClick={() => respondToRequest(r._id || r.id, 'rejected')}>
-                        <i className="fas fa-times"></i>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Doctor Profile */}
-          <div className="dashboard-card">
-            <div className="card-header">
-              <i className="fas fa-user-md"></i>
-              <h3>Your Profile</h3>
-            </div>
-            <div className="card-body">
-              <div className="profile-summary">
-                <div className="profile-avatar-large"><i className="fas fa-user-md"></i></div>
-                <div className="profile-details">
-                  <h4>Dr. {d?.name || '-'}</h4>
-                  <p className="specialization">{d?.specialization || '-'}</p>
-                  <p className="hospital"><i className="fas fa-hospital"></i> {d?.regState || d?.hospital || 'N/A'}</p>
-                  <div className="profile-stats">
-                    <div>
-                      <span className="number">{(d?.experience ?? '-') + '+'}</span>
-                      <span className="label">Years Exp.</span>
-                    </div>
-                    <div>
-                      <span className="number">{stats.total + '+'}</span>
-                      <span className="label">Patients</span>
-                    </div>
+            <div className="dashboard-grid">
+              {/* Today's Schedule */}
+              <div className="dashboard-card full-width">
+                <div className="card-header">
+                  <i className="fas fa-calendar-day"></i>
+                  <h3>Today's Schedule</h3>
+                </div>
+                <div className="card-body">
+                  <div className="schedule-timeline">
+                    {schedule.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No appointments scheduled for today.</p>}
+                    {schedule.map((appt, i) => {
+                      const aptTime = new Date(appt.appointmentTime)
+                      const diffMin = (aptTime - new Date()) / 60000
+                      const statusClass = diffMin < -30 ? 'completed' : diffMin <= 15 ? 'current' : 'upcoming'
+                      const label = { completed: 'Completed', current: 'Now', upcoming: 'Upcoming' }[statusClass]
+                      return (
+                        <div className={`schedule-item ${statusClass}`} key={i}>
+                          <div className="schedule-time">{formatTime(appt.appointmentTime)}</div>
+                          <div className="schedule-info">
+                            <h4>Patient #{appt.patientId}</h4>
+                            <p>{appt.symptoms || 'Consultation'}</p>
+                            <span className={`status ${statusClass}`}>{label}</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            {appt.meetingLink && (
+                              <button className="btn btn-primary btn-sm" onClick={() => window.open(appt.meetingLink, '_blank')}>
+                                <i className="fas fa-video"></i> Join
+                              </button>
+                            )}
+                            <button className="btn btn-outline btn-sm"
+                              onClick={() => setPrescriptionModal({ patientId: appt.patientId, appointmentId: appt.id })}>
+                              <i className="fas fa-prescription"></i> Prescribe
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
-              <button className="btn btn-outline btn-full" onClick={() => showToast('Edit profile coming soon!', 'info')}>
-                <i className="fas fa-edit"></i> Edit Profile
-              </button>
-            </div>
-          </div>
 
-          {/* Quick Actions */}
-          <div className="dashboard-card full-width">
-            <div className="card-header">
-              <i className="fas fa-bolt"></i>
-              <h3>Quick Actions</h3>
-            </div>
-            <div className="card-body">
-              <div className="quick-actions">
-                {[
-                  { icon: 'fa-calendar-plus', label: 'Schedule Appointment' },
-                  { icon: 'fa-prescription-bottle-alt', label: 'Write Prescription' },
-                  { icon: 'fa-file-medical-alt', label: 'Create Medical Report' },
-                  { icon: 'fa-envelope', label: 'Send Message' },
-                  { icon: 'fa-video', label: 'Start Video Call' },
-                  { icon: 'fa-chart-bar', label: 'View Analytics' },
-                ].map(a => (
-                  <button key={a.label} className="action-btn"
-                    onClick={() => showToast(`${a.label} coming soon!`, 'info')}>
-                    <i className={`fas ${a.icon}`}></i>
-                    <span>{a.label}</span>
+              {/* Recent Patients */}
+              <div className="dashboard-card">
+                <div className="card-header">
+                  <i className="fas fa-user-injured"></i>
+                  <h3>Recent Patients</h3>
+                </div>
+                <div className="card-body">
+                  <div className="patients-list">
+                    {recentPatients.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No patients yet.</p>}
+                    {recentPatients.map((a, i) => (
+                      <div className="patient-item" key={i}>
+                        <div className="patient-avatar"><i className="fas fa-user"></i></div>
+                        <div className="patient-info">
+                          <h4>Patient #{a.patientId}</h4>
+                          <p>Last: {formatDate(a.appointmentTime)}</p>
+                        </div>
+                        <button className="btn btn-outline btn-sm"
+                          onClick={() => setPrescriptionModal({ patientId: a.patientId, appointmentId: null })}>
+                          Prescribe
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button className="btn btn-primary btn-full" style={{ marginTop: '1rem' }}
+                    onClick={() => showToast('All patients view coming soon!', 'info')}>
+                    <i className="fas fa-users"></i> View All Patients
                   </button>
-                ))}
+                </div>
+              </div>
+
+              {/* Pending Prescriptions */}
+              <div className="dashboard-card">
+                <div className="card-header">
+                  <i className="fas fa-prescription"></i>
+                  <h3>Pending Prescriptions</h3>
+                </div>
+                <div className="card-body">
+                  <div className="prescription-list">
+                    {pendingPrescriptions.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No pending prescriptions.</p>}
+                    {pendingPrescriptions.map((p, i) => (
+                      <div className="prescription-item pending" key={i}>
+                        <div className="prescription-icon"><i className="fas fa-clock"></i></div>
+                        <div className="prescription-info">
+                          <h4>{p.patientName || 'Patient'}</h4>
+                          <p>Pending since: {p.createdAt ? formatDate(p.createdAt) : 'N/A'}</p>
+                        </div>
+                        <button className="btn btn-primary btn-sm" onClick={() => showToast('Opening editor...', 'info')}>Write</button>
+                      </div>
+                    ))}
+                  </div>
+                  <button className="btn btn-primary btn-full" style={{ marginTop: '1rem' }}
+                    onClick={() => {
+                      const pid = window.prompt('Enter Patient ID:')
+                      if (pid) setPrescriptionModal({ patientId: parseInt(pid), appointmentId: null })
+                    }}>
+                    <i className="fas fa-plus"></i> Write New Prescription
+                  </button>
+                </div>
+              </div>
+
+              {/* Patient Requests */}
+              <div className="dashboard-card">
+                <div className="card-header">
+                  <i className="fas fa-user-plus"></i>
+                  <h3>New Patient Requests</h3>
+                </div>
+                <div className="card-body">
+                  <div className="request-list">
+                    {requests.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No new patient requests.</p>}
+                    {requests.map((r, i) => (
+                      <div className="request-item" key={i}>
+                        <div className="request-avatar"><i className="fas fa-user"></i></div>
+                        <div className="request-info">
+                          <h4>{r.patientName || r.patient?.name || 'Patient'}</h4>
+                          <p>{r.type || r.reason || 'Consultation'}</p>
+                          <span className="request-time">Requested: {r.createdAt ? timeAgoString(r.createdAt) : 'Recently'}</span>
+                        </div>
+                        <div className="request-actions">
+                          <button className="btn btn-primary btn-sm" title="Accept"
+                            onClick={() => respondToRequest(r._id || r.id, 'accepted')}>
+                            <i className="fas fa-check"></i>
+                          </button>
+                          <button className="btn btn-outline btn-sm" title="Reject"
+                            onClick={() => respondToRequest(r._id || r.id, 'rejected')}>
+                            <i className="fas fa-times"></i>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Doctor Profile */}
+              <div className="dashboard-card">
+                <div className="card-header">
+                  <i className="fas fa-user-md"></i>
+                  <h3>Your Profile</h3>
+                </div>
+                <div className="card-body">
+                  <div className="profile-summary">
+                    <div className="profile-avatar-large"><i className="fas fa-user-md"></i></div>
+                    <div className="profile-details">
+                      <h4>Dr. {d?.name || '-'}</h4>
+                      <p className="specialization">{d?.specialization || '-'}</p>
+                      <p className="hospital"><i className="fas fa-hospital"></i> {d?.regState || d?.hospital || 'N/A'}</p>
+                      <div className="profile-stats">
+                        <div>
+                          <span className="number">{(d?.experience ?? '-') + '+'}</span>
+                          <span className="label">Years Exp.</span>
+                        </div>
+                        <div>
+                          <span className="number">{stats.total + '+'}</span>
+                          <span className="label">Patients</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <button className="btn btn-outline btn-full" onClick={() => showToast('Edit profile coming soon!', 'info')}>
+                    <i className="fas fa-edit"></i> Edit Profile
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="dashboard-card full-width">
+                <div className="card-header">
+                  <i className="fas fa-bolt"></i>
+                  <h3>Quick Actions</h3>
+                </div>
+                <div className="card-body">
+                  <div className="quick-actions">
+                    {[
+                      { icon: 'fa-calendar-plus', label: 'Schedule Appointment' },
+                      { icon: 'fa-prescription-bottle-alt', label: 'Write Prescription' },
+                      { icon: 'fa-file-medical-alt', label: 'Create Medical Report' },
+                      { icon: 'fa-envelope', label: 'Send Message' },
+                      { icon: 'fa-video', label: 'Start Video Call' },
+                      { icon: 'fa-chart-bar', label: 'View Analytics' },
+                    ].map(a => (
+                      <button key={a.label} className="action-btn"
+                        onClick={() => showToast(`${a.label} coming soon!`, 'info')}>
+                        <i className={`fas ${a.icon}`}></i>
+                        <span>{a.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          </>
+        ) : null}
       </main>
 
       {prescriptionModal && (
