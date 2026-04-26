@@ -5627,3 +5627,119 @@ body {
     cursor: pointer !important;
   }
 }
+
+
+/* Role selection modal — mobile fix */
+@media (max-width: 768px) {
+  .role-selection {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .role-card {
+    padding: 16px 10px !important;
+    border-radius: 14px !important;
+    text-align: center !important;
+  }
+
+  .role-icon {
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 20px !important;
+    margin: 0 auto 8px !important;
+  }
+
+  .role-card h3 {
+    font-size: 14px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .role-card p {
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+  }
+
+  .modal-container.modal-small {
+    width: 92vw !important;
+    padding: 20px 16px !important;
+    border-radius: 16px !important;
+  }
+
+  .auth-header h2 {
+    font-size: 18px !important;
+  }
+
+  .auth-header p {
+    font-size: 13px !important;
+  }
+
+  .demo-credentials {
+    font-size: 11px !important;
+    padding: 10px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .modal-container {
+    width: 92vw !important;
+    padding: 16px !important;
+    border-radius: 16px !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+
+  .auth-form h2 {
+    font-size: 18px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .auth-tabs {
+    margin-bottom: 12px !important;
+  }
+
+  .auth-tab {
+    font-size: 13px !important;
+    padding: 8px 16px !important;
+  }
+
+  .form-group {
+    margin-bottom: 10px !important;
+  }
+
+  .form-group label {
+    font-size: 12px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .form-group input {
+    padding: 9px 12px !important;
+    font-size: 13px !important;
+    border-radius: 8px !important;
+  }
+
+  .form-footer {
+    margin-bottom: 8px !important;
+  }
+
+  .forgot-link {
+    font-size: 12px !important;
+  }
+
+  .btn-full {
+    padding: 10px !important;
+    font-size: 14px !important;
+    border-radius: 10px !important;
+  }
+
+  .auth-switch {
+    font-size: 12px !important;
+    margin-top: 10px !important;
+  }
+
+  .info-box {
+    padding: 8px 10px !important;
+    font-size: 11px !important;
+    margin-bottom: 10px !important;
+  }
+}
