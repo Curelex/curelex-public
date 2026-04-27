@@ -13,6 +13,8 @@ import About             from './pages/About'
 import AdminDashboard    from './pages/AdminDashboard'
 import DoctorProfileView from './pages/DoctorProfileView'
 import DoctorProfileForm from './pages/DoctorProfileForm'
+import PatientProfileView from './pages/PatientProfileView'
+import FeedbackForm from './pages/FeedbackForm'
 
 function ProtectedRoute({ children }) {
   const { currentUser } = useAuth()
@@ -37,6 +39,13 @@ function AppRoutes() {
 
       {/* Doctor Profile View/Edit */}
       <Route path="/doctor-profile-view" element={<ProtectedRoute><DoctorProfileView /></ProtectedRoute>} />
+
+       {/* Patient Profile View/Edit */}
+      <Route path="/patient-profile-view" element={<ProtectedRoute><PatientProfileView /></ProtectedRoute>} />
+
+       {/* Feedback Form */}
+      <Route path="/feedback" element={
+      <ProtectedRoute> <FeedbackForm /></ProtectedRoute>} />
 
       {/* Protected */}
       <Route
