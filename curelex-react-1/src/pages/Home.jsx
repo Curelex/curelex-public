@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Toast, useToast } from '../components/Toast';
+import { authAPI } from '../api/auth';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -54,78 +55,94 @@ const Home = () => {
     setConsultForm({ fullName: '', phoneCode: '+91', mobile: '', email: '', state: '', service: '' });
   };
 
+  
+
   const handlePatientLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    if (patientLogin.email === DEMO_PATIENT.email && patientLogin.password === DEMO_PATIENT.password) {
-      login({ id: DEMO_PATIENT.id, name: DEMO_PATIENT.name, email: DEMO_PATIENT.email, role: 'patient' }, 'demo-token-123');
-      showToast('Patient login successful!', 'success');
-      setShowLoginModal(false);
+    try {
+      const result = await authAPI.patientLogin(patientLogin.email, patientLogin.password);
+      login(result.user, result.token, 'patient');
+      showToast('Login successful!', 'success');
       navigate('/patient-dashboard');
-    } else {
-      showToast('Invalid credentials. Try: patient@curelex.com / patient123', 'error');
+    } catch (error) {
+      showToast(error.message, 'error');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleDoctorLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    if (doctorLogin.email === DEMO_DOCTOR.email && doctorLogin.password === DEMO_DOCTOR.password) {
-      login({ id: DEMO_DOCTOR.id, name: DEMO_DOCTOR.name, email: DEMO_DOCTOR.email, role: 'doctor' }, 'demo-token-456');
-      showToast('Doctor login successful!', 'success');
-      setShowLoginModal(false);
+    try {
+      const result = await authAPI.doctorLogin(doctorLogin.email, doctorLogin.password);
+      login(result.user, result.token, 'doctor');
+      showToast('Login successful!', 'success');
       navigate('/doctor-dashboard');
-    } else {
-      showToast('Invalid credentials. Try: doctor@curelex.com / doctor123', 'error');
+    } catch (error) {
+      if (error.message.includes('not approved')) {
+        showToast('Your account is pending admin approval.', 'info');
+      } else {
+        showToast(error.message, 'error');
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handlePatientSignUp = async (e) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const newPatient = {
-      id: 'P' + Date.now(), name: patientSignUp.fullName, email: patientSignUp.email,
-      mobile: patientSignUp.mobile, password: patientSignUp.password, role: 'patient'
-    };
-    const existingUsers = JSON.parse(localStorage.getItem('curelex_users') || '[]');
-    existingUsers.push(newPatient);
-    localStorage.setItem('curelex_users', JSON.stringify(existingUsers));
-    showToast('Patient registration successful! Please login.', 'success');
-    setShowPatientSignUp(false);
-    setShowLoginModal(true);
-    setActiveTab('patient-login');
-    setPatientSignUp({ fullName: '', mobile: '', email: '', password: '' });
+    try {
+      const result = await authAPI.patientRegister({
+          name: patientSignUp.fullName,
+          email: patientSignUp.email,
+          password: patientSignUp.password,
+          mobile: patientSignUp.mobile,
+          // age: patientSignUp.age || null,
+          // gender: patientSignUp.gender || null
+        })
+      
+      if (result.message == "User registered successfully") {
+        showToast('Registration successful! Please login.', 'success');
+        setShowPatientSignUp(false);
+        setShowLoginModal(true);
+        setActiveTab('patient-login');
+        setPatientSignUp({ fullName: '', mobile: '', email: '', password: '' });
+      } else {
+        showToast(data.message || 'Registration failed', 'error');
+      }
+    } catch (error) {
+      showToast('Server error. Please try again.', 'error');
+    }
     setLoading(false);
   };
 
+  
   const handleDoctorSignUp = async (e) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const newDoctor = {
-      id: 'D' + Date.now(), name: doctorSignUp.fullName, mobile: doctorSignUp.mobile,
-      email: doctorSignUp.email, age: doctorSignUp.age, gender: doctorSignUp.gender,
-      specialization: doctorSignUp.specialization, regNumber: doctorSignUp.regNumber,
-      regState: doctorSignUp.regState, hospital: doctorSignUp.hospital,
-      experience: doctorSignUp.experience, patients: doctorSignUp.patients,
-      password: doctorSignUp.password, role: 'doctor', status: 'pending'
-    };
-    const existingDoctors = JSON.parse(localStorage.getItem('curelex_doctors') || '[]');
-    existingDoctors.push(newDoctor);
-    localStorage.setItem('curelex_doctors', JSON.stringify(existingDoctors));
-    showToast('Doctor registration submitted for approval!', 'success');
-    setShowDoctorSignUp(false);
-    setDoctorSignUp({
-      fullName: '', mobile: '', password: '',
-      email: '', age: '', gender: '', specialization: '',
-      regNumber: '', regState: '', hospital: '', experience: '', patients: '',
-      photo: null, cert: null
-    });
+  try {
+      const result = await authAPI.doctorRegister({
+          name: doctorSignUp.fullName,
+          email: doctorSignUp.email,
+          password: doctorSignUp.password,
+        })
+      console.log(result);
+      if (result.message == "Doctor registered successfully") {
+        showToast('Registration successful! Please login.', 'success');
+        setShowDoctorSignUp(false);
+        setShowLoginModal(true);
+        setDoctorSignUp({
+          name: '', password: '', email: ''
+        });
+      } else {
+        showToast(data.message || 'Registration failed', 'error');
+      }
+    } catch (error) {
+      showToast('Server error. Please try again.', 'error');
+    }
     setLoading(false);
   };
 
@@ -408,11 +425,7 @@ const Home = () => {
                 <h3>Doctor</h3><p>Manage appointments and patient consultations</p>
               </button>
             </div>
-            <div className="demo-credentials" style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '8px', textAlign: 'center' }}>
-              <p style={{ fontSize: '12px', marginBottom: '5px' }}><strong>Demo Credentials:</strong></p>
-              <p style={{ fontSize: '11px' }}>Patient: patient@curelex.com / patient123</p>
-              <p style={{ fontSize: '11px' }}>Doctor: doctor@curelex.com / doctor123</p>
-            </div>
+            
           </div>
         </div>
       )}
@@ -528,13 +541,13 @@ const Home = () => {
                 <input type="text" id="drFullName" placeholder="Enter your full name" value={doctorSignUp.fullName} onChange={(e) => setDoctorSignUp({ ...doctorSignUp, fullName: e.target.value })} required />
               </div>
               <div className="form-group">
-                <label htmlFor="drMobile">Mobile Number *</label>
-                <input type="tel" id="drMobile" placeholder="Enter your mobile number" value={doctorSignUp.mobile} onChange={(e) => setDoctorSignUp({ ...doctorSignUp, mobile: e.target.value })} required />
+                <label htmlFor="email">Email Address *</label>
+                <input type="email" id="drMobile" placeholder="Enter your email address" value={doctorSignUp.email} onChange={(e) => setDoctorSignUp({ ...doctorSignUp, email: e.target.value })} required />
               </div>
               <div className="form-group">
                 <label htmlFor="drPassword">Create Password *</label>
                 <div style={{ position: 'relative' }}>
-                  <input type={passwordVisible.doctor ? 'text' : 'password'} id="drPassword" placeholder="Create password" value={doctorSignUp.password} onChange={(e) => setDoctorSignUp({ ...doctorSignUp, password: e.target.value })} style={{ width: '100%', paddingRight: '35px' }} required />
+                  <input type={passwordVisible.doctor ? 'text' : 'password'} id="drPassword" placeholder="Create password" minLength={6} value={doctorSignUp.password} onChange={(e) => setDoctorSignUp({ ...doctorSignUp, password: e.target.value })} style={{ width: '100%', paddingRight: '35px' }} required />
                   <i className={`fa-solid ${passwordVisible.doctor ? 'fa-eye-slash' : 'fa-eye'}`} onClick={() => setPasswordVisible({ ...passwordVisible, doctor: !passwordVisible.doctor })} style={{ position: 'absolute', right: '10px', top: '12px', cursor: 'pointer' }} />
                 </div>
               </div>

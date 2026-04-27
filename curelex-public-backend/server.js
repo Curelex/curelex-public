@@ -19,12 +19,14 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 
 // Middleware
 const errorHandler = require("./middleware/errorHandler");
+const morgan = require("morgan");
 
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(morgan('dev'));
 
 // ================= DB CONNECTION =================
 sequelize.authenticate()

@@ -12,12 +12,7 @@ import Telemedicine      from './pages/Telemedicine'
 import About             from './pages/About'
 import AdminDashboard    from './pages/AdminDashboard'
 import DoctorProfileView from './pages/DoctorProfileView'
-
-// Optional — only import if file exists
-let DoctorProfileForm = null
-try {
-  DoctorProfileForm = require('./pages/DoctorProfileForm').default
-} catch {}
+import DoctorProfileForm from './pages/DoctorProfileForm'
 
 function ProtectedRoute({ children }) {
   const { currentUser } = useAuth()

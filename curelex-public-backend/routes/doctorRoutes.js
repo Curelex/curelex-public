@@ -16,15 +16,12 @@ const { doctorAuth } = require("../middleware/role.middleware");
 
 router.post(
   "/register",
-  uploadRegistration,    
-  handleUploadError,
+  // uploadRegistration,    
+  // handleUploadError,
   [
     body("name").notEmpty().withMessage("Name is required"),
     body("email").isEmail().withMessage("Valid email required"),
     body("password").isLength({ min: 6 }).withMessage("Password min 6 chars"),
-    body("specialization").notEmpty().withMessage("Specialization required"),
-    body("regNum").notEmpty().withMessage("Registration number required"),
-    body("regState").notEmpty().withMessage("Registration state required")
   ],
   registerDoctor
 );

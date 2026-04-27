@@ -29,12 +29,12 @@ const User = sequelize.define("User", {
 
   age: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
   },
 
   gender: {
     type: DataTypes.ENUM("male", "female", "other"),
-    allowNull: false,
+    allowNull: true,
   },
 
   mobile: {
@@ -48,17 +48,17 @@ const User = sequelize.define("User", {
   },
   address: {
     type: DataTypes.TEXT,
-    allowNull: false,
+    allowNull: true,
   },
 
   emergency: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
   },
 
   aadhaar: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
     unique: true,
     validate: {
       len: [12, 12],

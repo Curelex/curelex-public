@@ -16,9 +16,14 @@ const Doctor = sequelize.define("Doctor", {
     allowNull: false,
     unique: true
   },
+  mobile: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    unique: true
+  },
   regNum: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     unique: true
   },
   regState: {
@@ -27,46 +32,46 @@ const Doctor = sequelize.define("Doctor", {
   },
   age: {
     type: DataTypes.INTEGER,
-    allowNull: false,
-    
+    allowNull: true,
+
   },
   gender: {
     type: DataTypes.ENUM("male", "female", "other"),
-    allowNull: false,
-    
+    allowNull: true,
+
   },
   patientsHandeled: {
     type: DataTypes.INTEGER,
-    allowNull: false,
-    
+    allowNull: true,
+
   },
-  password: { 
-    type: DataTypes.STRING, 
-    allowNull: false 
-  },
-  specialization: {
+  password: {
     type: DataTypes.STRING,
     allowNull: false
   },
+  specialization: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   experience: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true
   },
   certificateUrl: {
     type: DataTypes.STRING
   },
-  certificatePublicId: {      
-  type: DataTypes.STRING,
-  allowNull: true
-},
-photoUrl: {                 
-  type: DataTypes.STRING,
-  allowNull: true
-},
-photoPublicId: {            
-  type: DataTypes.STRING,
-  allowNull: true
-},
+  certificatePublicId: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  photoUrl: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  photoPublicId: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   verificationStatus: {
     type: DataTypes.ENUM("pending", "approved", "rejected"),
     defaultValue: "pending"
