@@ -347,7 +347,7 @@ export default function PatientDashboard() {
   /* ── Single nav handler for BOTH sidebar and dropdown ── */
   const handleNav = (key, closeFn) => {
     if      (key === 'feedback') navigate('/feedback')
-    else if (key === 'profile')  navigate('/patient-profile')  // ← View/Update Profile
+    else if (key === 'profile')  navigate('/patient-profile-view')  // ← View/Update Profile
     else                         setActiveNav(key)
     if (closeFn) closeFn()
   }
@@ -368,9 +368,13 @@ export default function PatientDashboard() {
   }
 
   const handleOfferingClick = (key) => {
-    if (key === 'doctors') setDoctorsModal(true)
+  if (key === 'doctors') {
+    setDoctorsModal(true)
+  } 
+  else if (key === 'video') {
+    navigate('/telemedicine')   // ✅ ADD THIS
   }
-
+}
   const now      = new Date()
   const initials = currentUser?.name
     ? currentUser.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
