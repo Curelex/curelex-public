@@ -368,22 +368,42 @@ export default function DoctorDashboard() {
 
   async function checkDoctorProfileStatus() {
     try {
-      const stored = localStorage.getItem('curelex_doctors')
-      if (stored) {
-        const doctors = JSON.parse(stored)
-        const myDoc = doctors.find(d => d.id === doctor.id || d.email === doctor.email)
-        if (myDoc) {
-          const isComplete = !!(myDoc.specialization && myDoc.experience && myDoc.licenseNumber)
-          const isApproved = myDoc.isApproved === true || myDoc.status === 'approved'
+      const doctorData = localStorage.getItem('doctor-data')
+      if (doctorData) {
+        const myDoc = JSON.parse(doctorData)
+
+        // Only use if it belongs to the current logged-in doctor
+        if (myDoc.id === doctor.id || myDoc.email === doctor.email) {
+          const isComplete = !!(
+            myDoc.specialization &&
+            myDoc.experience &&
+            (myDoc.licenseNumber || myDoc.regNumber)
+          )
+          const stored = localStorage.getItem('curelex_doctors')
+          let isApproved = false
+          if (stored) {
+            const doctors = JSON.parse(stored)
+            const myEntry = doctors.find(d => d.id === myDoc.id || d.email === myDoc.email)
+            if (myEntry) {
+              isApproved = myEntry.isApproved === true || myEntry.status === 'approved'
+            }
+          }
           setProfileStatus({ isProfileComplete: isComplete, isApproved, isLoading: false })
           if (isComplete && isApproved) { loadAllApproved(); loadPrescriptions(); loadRequests() }
           return
         }
+
+        // Stale data from another account — clear it
+        localStorage.removeItem('doctor-data')
+        localStorage.removeItem('doctor-profile-complete')
+        localStorage.removeItem('doctor-approved')
       }
+
+      // Fallback: API
       const res = await fetch(`${API}/doctors/${doctor.id}`, { headers: authHeaders(token) })
       const data = await res.json()
       const doc = data.doctor || data
-      const isComplete = !!(doc.specialization && doc.experience && doc.licenseNumber)
+      const isComplete = !!(doc.specialization && doc.experience && (doc.licenseNumber || doc.regNumber))
       const isApproved = doc.verificationStatus === 'approved' || doc.isApproved === true
       setProfileStatus({ isProfileComplete: isComplete, isApproved, isLoading: false })
     } catch {
@@ -393,10 +413,33 @@ export default function DoctorDashboard() {
 
   async function loadProfile() {
     try {
+      // Only use localStorage doctor-data if it belongs to the currently logged-in doctor
+      const doctorData = localStorage.getItem('doctor-data')
+      if (doctorData) {
+        const myDoc = JSON.parse(doctorData)
+        // Match against current logged-in user's id or email
+        if (myDoc.id === doctor.id || myDoc.email === doctor.email) {
+          const normalised = {
+            ...myDoc,
+            hospital: myDoc.hospital || myDoc.currentInstitute,
+            licenseNumber: myDoc.licenseNumber || myDoc.regNumber,
+            photo: myDoc.profilePhoto,
+          }
+          setProfile(normalised)
+          return
+        }
+        // doctor-data belongs to a different account — clear it
+        localStorage.removeItem('doctor-data')
+        localStorage.removeItem('doctor-profile-complete')
+        localStorage.removeItem('doctor-approved')
+      }
+      // Fallback: API
       const res = await fetch(`${API}/doctors/${doctor.id}`, { headers: authHeaders(token) })
       const data = await res.json()
       setProfile(data.doctor || data)
-    } catch { setProfile(doctor) }
+    } catch {
+      setProfile(doctor)
+    }
   }
 
   async function loadAllApproved() {
@@ -607,7 +650,7 @@ export default function DoctorDashboard() {
             {bannerStatus && (
               <StatusBanner
                 status={bannerStatus}
-                onAction={bannerStatus === 'incomplete' ? () => navigate('/doctor-profile') : checkDoctorProfileStatus}
+                onAction={bannerStatus === 'incomplete' ? () => navigate('/doctor-profile') : () => navigate('/doctor-profile-view')}
               />
             )}
 
@@ -763,7 +806,7 @@ export default function DoctorDashboard() {
                           </div>
                         </div>
                       </div>
-                      <button className="btn btn-outline btn-full" onClick={() => showToast('Edit profile coming soon!', 'info')}>
+                      <button className="btn btn-outline btn-full" onClick={() => navigate('/doctor-profile-view')}>
                         <i className="fas fa-edit"></i> Edit Profile
                       </button>
                     </div>

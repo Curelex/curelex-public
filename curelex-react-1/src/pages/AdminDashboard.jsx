@@ -20,6 +20,7 @@ export default function AdminDashboard() {
   const [tab,       setTab]       = useState('pending') // pending | approved | rejected
   const [search,    setSearch]    = useState('')
   const [toast,     setToast]     = useState(null)
+  const [viewDoc,   setViewDoc]   = useState(null)  // doctor being viewed in modal
 
   // ── on mount: check if already authed ─────────────────────
   useEffect(() => {
@@ -28,7 +29,15 @@ export default function AdminDashboard() {
 
   // ── reload doctors whenever authed ────────────────────────
   useEffect(() => {
-    if (authed) loadDoctors()
+    if (!authed) return
+    loadDoctors()
+
+    // Auto-refresh when doctor registers or updates profile (cross-tab sync)
+    const onStorage = (e) => {
+      if (e.key === 'curelex_doctors') loadDoctors()
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
   }, [authed])
 
   function loadDoctors() {
@@ -176,6 +185,12 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button
+            onClick={loadDoctors}
+            style={{ background: 'none', border: '1px solid #e5e7eb', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 13, color: '#374151' }}
+          >
+            <i className="fas fa-sync-alt" style={{ marginRight: 5 }}></i>Refresh
+          </button>
           <button onClick={() => navigate('/')} style={{ background: 'none', border: '1px solid #e5e7eb', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 13, color: '#374151' }}>
             ← Home
           </button>
@@ -277,6 +292,17 @@ export default function AdminDashboard() {
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+
+                  {/* ── NEW: View Button ── */}
+                  <button onClick={() => setViewDoc(doc)} style={{
+                    background: 'linear-gradient(135deg,#2563eb,#7c3aed)', color: 'white',
+                    border: 'none', borderRadius: 8, padding: '9px 20px',
+                    fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                  }}>
+                    <i className="fas fa-eye"></i> View
+                  </button>
+
                   {(doc.status !== 'approved') && (
                     <button onClick={() => approve(doc.id)} style={{
                       background: 'linear-gradient(135deg,#10b981,#059669)', color: 'white',
@@ -325,7 +351,174 @@ export default function AdminDashboard() {
           </code>
         </div>
       </div>
+      {/* ══════════════════════════════════════════════════════════
+          DOCTOR DETAIL MODAL
+      ════════════════════════════════════════════════════════════ */}
+      {viewDoc && (
+        <div onClick={() => setViewDoc(null)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+          zIndex: 10000, display: 'flex', alignItems: 'center',
+          justifyContent: 'center', padding: '20px', backdropFilter: 'blur(3px)',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'white', borderRadius: 20, width: '100%', maxWidth: 760,
+            maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
+            fontFamily: "'Poppins',sans-serif",
+          }}>
 
+            {/* Modal Header */}
+            <div style={{
+              background: 'linear-gradient(135deg,#2563eb,#7c3aed)',
+              borderRadius: '20px 20px 0 0', padding: '24px 28px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                {viewDoc.profilePhoto
+                  ? <img src={viewDoc.profilePhoto} alt="Profile"
+                      style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', border: '3px solid rgba(255,255,255,0.4)' }} />
+                  : <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700, color: 'white' }}>
+                      {(viewDoc.name || 'D').split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
+                    </div>
+                }
+                <div>
+                  <h2 style={{ margin: 0, color: 'white', fontSize: 20, fontWeight: 700 }}>Dr. {viewDoc.name}</h2>
+                  <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.75)', fontSize: 13 }}>{viewDoc.specialization}</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: '4px 14px', borderRadius: 20, textTransform: 'uppercase',
+                  background: viewDoc.status === 'approved' ? '#d1fae5' : viewDoc.status === 'rejected' ? '#fee2e2' : '#fef3c7',
+                  color: viewDoc.status === 'approved' ? '#065f46' : viewDoc.status === 'rejected' ? '#991b1b' : '#92400e',
+                }}>
+                  {viewDoc.status || 'Pending'}
+                </span>
+                <button onClick={() => setViewDoc(null)} style={{
+                  background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%',
+                  width: 32, height: 32, cursor: 'pointer', color: 'white', fontSize: 16,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>×</button>
+              </div>
+            </div>
+
+            <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+              {/* Section helper */}
+              {(() => {
+                const Section = ({ title, icon, children }) => (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                      <div style={{ width: 30, height: 30, background: 'linear-gradient(135deg,#2563eb,#7c3aed)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'white' }}>
+                        <i className={`fas ${icon}`}></i>
+                      </div>
+                      <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#111827' }}>{title}</h3>
+                    </div>
+                    <div style={{ background: '#f9fafb', borderRadius: 12, padding: '16px 20px', border: '1px solid #f0f0f0' }}>
+                      {children}
+                    </div>
+                  </div>
+                )
+
+                const Row = ({ label, value, icon }) => (
+                  <div style={{ display: 'flex', gap: 8, padding: '7px 0', borderBottom: '1px solid #f0f0f0', alignItems: 'flex-start' }}>
+                    <span style={{ minWidth: 160, fontSize: 13, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {icon && <i className={`fas ${icon}`} style={{ width: 14, color: '#9ca3af' }}></i>}
+                      {label}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', wordBreak: 'break-all' }}>
+                      {value || <span style={{ color: '#d1d5db', fontWeight: 400 }}>Not provided</span>}
+                    </span>
+                  </div>
+                )
+
+                return (
+                  <>
+                    {/* Basic Info */}
+                    <Section title="Basic Information" icon="fa-user">
+                      <Row label="Full Name"       icon="fa-user"        value={viewDoc.name} />
+                      <Row label="Email"           icon="fa-envelope"    value={viewDoc.email} />
+                      <Row label="Mobile"          icon="fa-phone"       value={viewDoc.mobile} />
+                      <Row label="Specialization"  icon="fa-stethoscope" value={viewDoc.specialization} />
+                      <Row label="Address"         icon="fa-map-marker-alt" value={viewDoc.address} />
+                      <Row label="Registered On"   icon="fa-calendar"    value={viewDoc.createdAt ? new Date(viewDoc.createdAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : null} />
+                    </Section>
+
+                    {/* Professional Info */}
+                    <Section title="Professional Details" icon="fa-briefcase-medical">
+                      <Row label="Experience"       icon="fa-briefcase"   value={viewDoc.experience ? `${viewDoc.experience} years` : null} />
+                      <Row label="Qualification"    icon="fa-graduation-cap" value={viewDoc.qualification} />
+                      <Row label="Current Hospital" icon="fa-hospital"    value={viewDoc.hospital || viewDoc.currentInstitute} />
+                      <Row label="Reg. Number"      icon="fa-id-card"     value={viewDoc.regNumber} />
+                    </Section>
+
+                    {/* Documents */}
+                    <Section title="Identity Documents" icon="fa-file-alt">
+                      <Row label="Aadhaar Number"  icon="fa-id-badge"    value={viewDoc.aadhaar} />
+                      <Row label="License Number"  icon="fa-certificate" value={viewDoc.regNumber} />
+                      {viewDoc.regCertificate && (
+                        <div style={{ marginTop: 12 }}>
+                          <p style={{ margin: '0 0 8px', fontSize: 13, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <i className="fas fa-file-medical" style={{ color: '#9ca3af' }}></i> Registration Certificate
+                          </p>
+                          {viewDoc.regCertificate.startsWith('data:image') ? (
+                            <img src={viewDoc.regCertificate} alt="Registration Certificate"
+                              style={{ maxWidth: '100%', borderRadius: 10, border: '1px solid #e5e7eb', maxHeight: 320, objectFit: 'contain' }} />
+                          ) : (
+                            <a href={viewDoc.regCertificate} download="registration_certificate"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#2563eb', color: 'white', padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+                              <i className="fas fa-download"></i> Download Certificate (PDF)
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </Section>
+
+                    {/* Bank Details */}
+                    <Section title="Bank / Payment Details" icon="fa-university">
+                      <Row label="Account Holder" icon="fa-user"        value={viewDoc.accountHolderName} />
+                      <Row label="Bank Name"      icon="fa-building"    value={viewDoc.bankName} />
+                      <Row label="Account Number" icon="fa-hashtag"     value={viewDoc.accountNumber} />
+                      <Row label="IFSC Code"      icon="fa-code"        value={viewDoc.ifscCode} />
+                    </Section>
+                  </>
+                )
+              })()}
+
+              {/* Modal Action Buttons */}
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 4 }}>
+                {viewDoc.status !== 'approved' && (
+                  <button onClick={() => { approve(viewDoc.id); setViewDoc(null) }} style={{
+                    background: 'linear-gradient(135deg,#10b981,#059669)', color: 'white',
+                    border: 'none', borderRadius: 10, padding: '11px 28px',
+                    fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}>
+                    <i className="fas fa-check"></i> Approve Doctor
+                  </button>
+                )}
+                {viewDoc.status !== 'rejected' && (
+                  <button onClick={() => { reject(viewDoc.id); setViewDoc(null) }} style={{
+                    background: '#f3f4f6', color: '#ef4444',
+                    border: '1.5px solid #fca5a5', borderRadius: 10, padding: '11px 28px',
+                    fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}>
+                    <i className="fas fa-times"></i> Reject
+                  </button>
+                )}
+                <button onClick={() => setViewDoc(null)} style={{
+                  background: 'none', color: '#6b7280',
+                  border: '1px solid #e5e7eb', borderRadius: 10, padding: '11px 20px',
+                  fontWeight: 600, fontSize: 14, cursor: 'pointer',
+                }}>
+                  Close
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
       <style>{`
         @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
         * { font-family: 'Poppins', sans-serif; box-sizing: border-box; }

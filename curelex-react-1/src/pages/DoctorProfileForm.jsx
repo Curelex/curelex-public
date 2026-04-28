@@ -77,14 +77,31 @@ export default function DoctorProfileForm() {
         specialization: form.specialization, experience: form.experience,
         qualification: form.qualification, regNumber: form.licenseNumber,
         address: form.address, aadhaar: form.aadhaar, currentInstitute: form.currentInstitute,
-        isApproved: false, profileComplete: true, createdAt: new Date().toISOString(),
+        hospital: form.currentInstitute,
+        isApproved: false, status: 'pending', profileComplete: true,
+        createdAt: new Date().toISOString(),
         profilePhoto: profilePhotoData, regCertificate: regCertificateData,
         bankName: form.bankName, accountNumber: form.accountNumber,
         ifscCode: form.ifscCode, accountHolderName: form.accountHolderName,
       }
+
       localStorage.setItem('doctor-profile-complete', 'true')
       localStorage.setItem('doctor-approved', 'false')
       localStorage.setItem('doctor-data', JSON.stringify(doctorData))
+
+      // ── Upsert into curelex_doctors so AdminDashboard can see this doctor ──
+      const existingDoctors = JSON.parse(localStorage.getItem('curelex_doctors') || '[]')
+      const existingIndex = existingDoctors.findIndex(
+        d => d.id === doctorData.id || d.email === doctorData.email
+      )
+      if (existingIndex !== -1) {
+        existingDoctors[existingIndex] = { ...existingDoctors[existingIndex], ...doctorData, status: 'pending' }
+      } else {
+        existingDoctors.push(doctorData)
+      }
+      localStorage.setItem('curelex_doctors', JSON.stringify(existingDoctors))
+      // ──────────────────────────────────────────────────────────────────────
+
       const cur = localStorage.getItem('curelex-current-user')
       if (cur) {
         const u = JSON.parse(cur)

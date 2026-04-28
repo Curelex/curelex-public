@@ -56,14 +56,17 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    localStorage.removeItem('curelex-current-user');
-    localStorage.removeItem('token');
-    localStorage.removeItem('user-role');
-    apiClient.setToken(null);
-    setCurrentUser(null);
-    setToken(null);
-    setUserRole(null);
-  };
+    localStorage.removeItem('token')
+    localStorage.removeItem('currentUser')
+    localStorage.removeItem('curelex-current-user')
+    // Clear doctor-specific data so next login doesn't see stale profile
+    localStorage.removeItem('doctor-data')
+    localStorage.removeItem('doctor-profile-complete')
+    localStorage.removeItem('doctor-approved')
+    localStorage.removeItem('doctor-is-active')
+    setCurrentUser(null)
+    setToken(null)
+  }
 
   return (
     <AuthContext.Provider value={{ currentUser, token, userRole, login, logout }}>
