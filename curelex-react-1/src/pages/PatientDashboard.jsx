@@ -266,6 +266,7 @@ export default function PatientDashboard() {
                           className={`pd-user-dropdown__item${activeNav === item.key ? ' active' : ''}`}
                           onClick={() => {
                             if (item.key === 'feedback') navigate('/feedback');
+                            else if (item.key === 'profile') navigate('/patient-profile');
                             else setActiveNav(item.key);
                             setUserDropdown(false);
                           }}
@@ -319,6 +320,7 @@ export default function PatientDashboard() {
                     className={`pd-nav-item${activeNav === item.key ? ' active' : ''}`}
                     onClick={() => {
                       if (item.key === 'feedback') navigate('/feedback');
+                      else if (item.key === 'profile') navigate('/patient-profile');
                       else setActiveNav(item.key);
                       setSidebarOpen(false);
                     }}
