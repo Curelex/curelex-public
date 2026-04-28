@@ -15,11 +15,18 @@ import DoctorProfileView from './pages/DoctorProfileView'
 import DoctorProfileForm from './pages/DoctorProfileForm'
 import PatientProfileView from './pages/PatientProfileView'
 import FeedbackForm from './pages/FeedbackForm'
+import { useNavigate } from 'react-router-dom'
 
 function ProtectedRoute({ children }) {
   const { currentUser } = useAuth()
   return currentUser ? children : <Navigate to="/" replace />
 }
+
+function FeedbackPage() {
+  const navigate = useNavigate()
+  return <FeedbackForm onClose={() => navigate(-1)} />
+}
+
 
 function AppRoutes() {
   return (
@@ -44,8 +51,11 @@ function AppRoutes() {
       <Route path="/patient-profile-view" element={<ProtectedRoute><PatientProfileView /></ProtectedRoute>} />
 
        {/* Feedback Form */}
-      <Route path="/feedback" element={
-      <ProtectedRoute> <FeedbackForm /></ProtectedRoute>} />
+       <Route path="/feedback" element={
+  <ProtectedRoute>
+    <FeedbackPage />
+  </ProtectedRoute>
+} />
 
       {/* Protected */}
       <Route

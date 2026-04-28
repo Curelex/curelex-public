@@ -264,7 +264,11 @@ export default function PatientDashboard() {
                         <button
                           key={item.key}
                           className={`pd-user-dropdown__item${activeNav === item.key ? ' active' : ''}`}
-                          onClick={() => { setActiveNav(item.key); setUserDropdown(false) }}
+                          onClick={() => {
+                            if (item.key === 'feedback') navigate('/feedback');
+                            else setActiveNav(item.key);
+                            setUserDropdown(false);
+                          }}
                         >
                           <i className={`fas ${item.icon}`}></i> {item.label}
                         </button>
@@ -313,7 +317,11 @@ export default function PatientDashboard() {
                   <div
                     key={item.key}
                     className={`pd-nav-item${activeNav === item.key ? ' active' : ''}`}
-                    onClick={() => { setActiveNav(item.key); setSidebarOpen(false) }}
+                    onClick={() => {
+                      if (item.key === 'feedback') navigate('/feedback');
+                      else setActiveNav(item.key);
+                      setSidebarOpen(false);
+                    }}
                   >
                     <i className={`fas ${item.icon}`}></i>
                     {item.label}
