@@ -368,38 +368,25 @@ export default function DoctorDashboard() {
 
   async function checkDoctorProfileStatus() {
     try {
-      const doctorData = localStorage.getItem('doctor-data')
-      if (doctorData) {
-        const myDoc = JSON.parse(doctorData)
+      // The profile form saves data into curelex_doctors keyed by email
+      // Admin approves by setting isApproved: true, status: 'approved' in same store
+      const allDoctors = JSON.parse(localStorage.getItem('curelex_doctors') || '[]')
+      const myEntry = allDoctors.find(
+        d => d.email === doctor.email || d.id === doctor.id
+      )
 
-        // Only use if it belongs to the current logged-in doctor
-        if (myDoc.id === doctor.id || myDoc.email === doctor.email) {
-          const isComplete = !!(
-            myDoc.specialization &&
-            myDoc.experience &&
-            (myDoc.licenseNumber || myDoc.regNumber)
-          )
-          const stored = localStorage.getItem('curelex_doctors')
-          let isApproved = false
-          if (stored) {
-            const doctors = JSON.parse(stored)
-            const myEntry = doctors.find(d => d.id === myDoc.id || d.email === myDoc.email)
-            if (myEntry) {
-              isApproved = myEntry.isApproved === true || myEntry.status === 'approved'
-            }
-          }
-          setProfileStatus({ isProfileComplete: isComplete, isApproved, isLoading: false })
-          if (isComplete && isApproved) { loadAllApproved(); loadPrescriptions(); loadRequests() }
-          return
-        }
-
-        // Stale data from another account — clear it
-        localStorage.removeItem('doctor-data')
-        localStorage.removeItem('doctor-profile-complete')
-        localStorage.removeItem('doctor-approved')
+      if (myEntry) {
+        const isComplete = !!(
+          myEntry.specialization &&
+          myEntry.experience &&
+          (myEntry.licenseNumber || myEntry.regNumber)
+        )
+        const isApproved = myEntry.isApproved === true || myEntry.status === 'approved'
+        setProfileStatus({ isProfileComplete: isComplete, isApproved, isLoading: false })
+        return
       }
 
-      // Fallback: API
+      // Fallback: try the backend API
       const res = await fetch(`${API}/doctors/${doctor.id}`, { headers: authHeaders(token) })
       const data = await res.json()
       const doc = data.doctor || data
@@ -413,27 +400,17 @@ export default function DoctorDashboard() {
 
   async function loadProfile() {
     try {
-      // Only use localStorage doctor-data if it belongs to the currently logged-in doctor
-      const doctorData = localStorage.getItem('doctor-data')
-      if (doctorData) {
-        const myDoc = JSON.parse(doctorData)
-        // Match against current logged-in user's id or email
-        if (myDoc.id === doctor.id || myDoc.email === doctor.email) {
-          const normalised = {
-            ...myDoc,
-            hospital: myDoc.hospital || myDoc.currentInstitute,
-            licenseNumber: myDoc.licenseNumber || myDoc.regNumber,
-            photo: myDoc.profilePhoto,
-          }
-          setProfile(normalised)
-          return
-        }
-        // doctor-data belongs to a different account — clear it
-        localStorage.removeItem('doctor-data')
-        localStorage.removeItem('doctor-profile-complete')
-        localStorage.removeItem('doctor-approved')
+      const allDoctors = JSON.parse(localStorage.getItem('curelex_doctors') || '[]')
+      const myEntry = allDoctors.find(d => d.email === doctor.email || d.id === doctor.id)
+      if (myEntry) {
+        setProfile({
+          ...myEntry,
+          hospital: myEntry.hospital || myEntry.currentInstitute,
+          licenseNumber: myEntry.licenseNumber || myEntry.regNumber,
+          photo: myEntry.profilePhoto,
+        })
+        return
       }
-      // Fallback: API
       const res = await fetch(`${API}/doctors/${doctor.id}`, { headers: authHeaders(token) })
       const data = await res.json()
       setProfile(data.doctor || data)
