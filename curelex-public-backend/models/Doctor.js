@@ -32,18 +32,15 @@ const Doctor = sequelize.define("Doctor", {
   },
   age: {
     type: DataTypes.INTEGER,
-    allowNull: true,
-
+    allowNull: true
   },
   gender: {
     type: DataTypes.ENUM("male", "female", "other"),
-    allowNull: true,
-
+    allowNull: true
   },
   patientsHandeled: {
     type: DataTypes.INTEGER,
-    allowNull: true,
-
+    allowNull: true
   },
   password: {
     type: DataTypes.STRING,
@@ -75,6 +72,12 @@ const Doctor = sequelize.define("Doctor", {
   verificationStatus: {
     type: DataTypes.ENUM("pending", "approved", "rejected"),
     defaultValue: "pending"
+  },
+  // ✅ NEW: tracks whether the doctor toggled themselves online/offline
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false
   }
 }, {
   timestamps: true

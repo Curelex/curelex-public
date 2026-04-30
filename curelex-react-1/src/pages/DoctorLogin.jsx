@@ -6,13 +6,13 @@ import { useAuth } from '../context/AuthContext'
 import { API } from '../utils/helpers'
 
 export default function DoctorLogin() {
-  const [email, setEmail] = useState('')
+  const [email, setEmail]     = useState('')
   const [password, setPassword] = useState('')
-  const [showPw, setShowPw] = useState(false)
+  const [showPw, setShowPw]   = useState(false)
   const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
-  const navigate = useNavigate()
-  const showToast = useToast()
+  const { login }             = useAuth()
+  const navigate              = useNavigate()
+  const showToast             = useToast()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -24,8 +24,12 @@ export default function DoctorLogin() {
         body: JSON.stringify({ email, password }),
       })
       const data = await res.json()
+
       if (data.success || data.token) {
-        login(data.doctor || data.user, data.token)
+        // ✅ FIX: pass 'doctor' as the role (3rd argument)
+        // Previously this was missing, causing userRole to be undefined
+        // which broke doctorAuth middleware checks
+        login(data.doctor || data.user, data.token, 'doctor')
         showToast('Login successful!', 'success')
         navigate('/doctor-dashboard')
       } else {
@@ -48,7 +52,12 @@ export default function DoctorLogin() {
             <h1>Doctor Login</h1>
             <p>Access your professional account to manage appointments and patient consultations</p>
             <div className="auth-benefits">
-              {['Manage Patient Appointments', 'Conduct Video Consultations', 'View Patient Records', 'Manage Prescriptions'].map(b => (
+              {[
+                'Manage Patient Appointments',
+                'Conduct Video Consultations',
+                'View Patient Records',
+                'Manage Prescriptions',
+              ].map(b => (
                 <div className="benefit-item" key={b}>
                   <i className="fas fa-check-circle"></i>
                   <span>{b}</span>
@@ -57,6 +66,7 @@ export default function DoctorLogin() {
             </div>
           </div>
         </div>
+
         <div className="auth-page-right">
           <div className="auth-page-card">
             <div className="auth-header">
@@ -70,8 +80,13 @@ export default function DoctorLogin() {
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Email ID</label>
-                <input type="email" placeholder="Enter your email" value={email}
-                  onChange={e => setEmail(e.target.value)} required />
+                <input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                />
               </div>
               <div className="form-group">
                 <label>Password</label>
@@ -88,7 +103,7 @@ export default function DoctorLogin() {
                     className={`fa-solid fa-eye${showPw ? '-slash' : ''}`}
                     onClick={() => setShowPw(p => !p)}
                     style={{ position: 'absolute', right: 10, top: 12, cursor: 'pointer' }}
-                  ></i>
+                  />
                 </div>
               </div>
               <div className="form-footer">

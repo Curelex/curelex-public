@@ -51,9 +51,119 @@ const FOLLOWUP_DETAILS = [
 ]
 
 /* ═══════════════════════════════════════════════════════════════
-   DOCTORS MODAL
+   DOCTOR CARD — used in both "Find Doctors" modal and Telemedicine
    ═══════════════════════════════════════════════════════════════ */
-function DoctorsModal({ onClose, token }) {
+export function DoctorCard({ doc, onBook }) {
+  const isApproved = doc.verificationStatus === 'approved'
+
+  return (
+    <div style={{
+      border: `1.5px solid ${isApproved ? '#d1fae5' : '#e5e7eb'}`,
+      borderRadius: 14,
+      padding: '18px 20px',
+      background: isApproved ? '#fff' : '#f9fafb',
+      opacity: isApproved ? 1 : 0.55,
+      filter: isApproved ? 'none' : 'grayscale(60%)',
+      transition: 'all 0.2s',
+      display: 'flex',
+      gap: 16,
+      alignItems: 'flex-start',
+      position: 'relative',
+      boxShadow: isApproved ? '0 2px 12px rgba(0,179,134,0.08)' : 'none',
+    }}>
+      {/* Avatar */}
+      <div style={{ position: 'relative', flexShrink: 0 }}>
+        {doc.photoUrl ? (
+          <img src={doc.photoUrl} alt={doc.name}
+            style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover',
+              border: `2.5px solid ${isApproved ? '#00b386' : '#d1d5db'}` }} />
+        ) : (
+          <div style={{
+            width: 64, height: 64, borderRadius: '50%',
+            background: isApproved ? 'linear-gradient(135deg,#00b386,#2d6be4)' : '#e5e7eb',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 24, fontWeight: 700, color: isApproved ? 'white' : '#9ca3af',
+          }}>
+            {doc.name?.charAt(0)?.toUpperCase() || 'D'}
+          </div>
+        )}
+        {/* Active indicator dot */}
+        <span style={{
+          position: 'absolute', bottom: 2, right: 2,
+          width: 14, height: 14, borderRadius: '50%',
+          background: isApproved ? '#10b981' : '#9ca3af',
+          border: '2px solid white',
+        }} />
+      </div>
+
+      {/* Info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+          <span style={{ fontWeight: 700, fontSize: 15, color: isApproved ? '#111827' : '#6b7280' }}>
+            Dr. {doc.name}
+          </span>
+          <span style={{
+            fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
+            background: isApproved ? '#dcfce7' : doc.verificationStatus === 'rejected' ? '#fee2e2' : '#fef9c3',
+            color:      isApproved ? '#16a34a' : doc.verificationStatus === 'rejected' ? '#dc2626' : '#ca8a04',
+          }}>
+            {isApproved ? '● Active' : doc.verificationStatus === 'rejected' ? '✕ Rejected' : '⏳ Pending'}
+          </span>
+        </div>
+
+        {doc.specialization && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+            <i className="fas fa-stethoscope" style={{ fontSize: 12, color: isApproved ? '#00b386' : '#9ca3af' }}></i>
+            <span style={{ fontSize: 13, fontWeight: 600, color: isApproved ? '#0f766e' : '#9ca3af' }}>
+              {doc.specialization}
+            </span>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: '#6b7280', marginBottom: 10 }}>
+          {doc.experience != null && (
+            <span><i className="fas fa-briefcase-medical" style={{ marginRight: 4 }}></i>{doc.experience} yr{doc.experience !== 1 ? 's' : ''} exp.</span>
+          )}
+          {doc.patientsHandeled != null && (
+            <span><i className="fas fa-users" style={{ marginRight: 4 }}></i>{doc.patientsHandeled.toLocaleString()} patients</span>
+          )}
+          {doc.gender && (
+            <span style={{ textTransform: 'capitalize' }}>
+              <i className={`fas fa-${doc.gender === 'female' ? 'venus' : 'mars'}`} style={{ marginRight: 4 }}></i>{doc.gender}
+            </span>
+          )}
+          {doc.regState && (
+            <span><i className="fas fa-map-marker-alt" style={{ marginRight: 4 }}></i>{doc.regState}</span>
+          )}
+        </div>
+
+        {isApproved && onBook && (
+          <button onClick={() => onBook(doc)}
+            style={{
+              background: 'linear-gradient(135deg,#00b386,#2d6be4)',
+              color: 'white', border: 'none', borderRadius: 8,
+              padding: '7px 18px', fontSize: 13, fontWeight: 600,
+              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}>
+            <i className="fas fa-calendar-plus"></i> Book Appointment
+          </button>
+        )}
+
+        {!isApproved && (
+          <span style={{ fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>
+            Currently unavailable for appointments
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DOCTORS MODAL  — "Find Doctors Near You"
+   FIX: fetch from /doctors (GET /) which returns ALL doctors
+   ═══════════════════════════════════════════════════════════════ */
+function DoctorsModal({ onClose, token, onBook }) {
   const [doctors,     setDoctors]     = useState([])
   const [loading,     setLoading]     = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -62,9 +172,12 @@ function DoctorsModal({ onClose, token }) {
   useEffect(() => {
     async function fetchDoctors() {
       try {
+        // ✅ FIXED: was /doctors — route didn't exist. Now uses GET /doctors/
         const res  = await fetch(`${API}/doctors`, { headers: authHeaders(token) })
         const data = await res.json()
-        if (data.success && data.doctors) setDoctors(data.doctors)
+        // handle both { success, doctors } and plain array
+        const list = data.doctors || (Array.isArray(data) ? data : [])
+        setDoctors(list)
       } catch (err) {
         console.error('Failed to load doctors:', err)
       } finally {
@@ -86,20 +199,21 @@ function DoctorsModal({ onClose, token }) {
     return matchSearch && matchSpec
   })
 
+  // Approved doctors first, then pending, then rejected
   const sorted = [...filtered].sort((a, b) => {
-    if (a.verificationStatus === 'approved' && b.verificationStatus !== 'approved') return -1
-    if (a.verificationStatus !== 'approved' && b.verificationStatus === 'approved') return 1
-    return 0
+    const order = { approved: 0, pending: 1, rejected: 2 }
+    return (order[a.verificationStatus] ?? 1) - (order[b.verificationStatus] ?? 1)
   })
 
-  const isActive = (d) => d.verificationStatus === 'approved'
+  const approvedCount  = doctors.filter(d => d.verificationStatus === 'approved').length
+  const inactiveCount  = doctors.length - approvedCount
 
   return (
     <div className="pd-modal-overlay" onClick={onClose}>
       <div
         className="pd-modal pd-doctors-modal"
         onClick={e => e.stopPropagation()}
-        style={{ maxWidth: 820, width: '95vw', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+        style={{ maxWidth: 860, width: '95vw', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
       >
         {/* Header */}
         <div className="pd-modal__head" style={{ position: 'relative', flexShrink: 0 }}>
@@ -153,8 +267,8 @@ function DoctorsModal({ onClose, token }) {
         {/* Legend */}
         <div style={{ padding: '0 24px 12px', display: 'flex', gap: 20, flexShrink: 0 }}>
           {[
-            { color: '#00b386', label: 'Active (Approved)' },
-            { color: '#d1d5db', label: 'Inactive (Pending / Rejected)' },
+            { color: '#10b981', label: 'Active (Approved)' },
+            { color: '#9ca3af', label: 'Inactive (Pending / Rejected)' },
           ].map(l => (
             <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6b7280' }}>
               <span style={{ width: 10, height: 10, borderRadius: '50%', background: l.color, display: 'inline-block' }}></span>
@@ -163,8 +277,8 @@ function DoctorsModal({ onClose, token }) {
           ))}
         </div>
 
-        {/* Table */}
-        <div style={{ overflowY: 'auto', flex: 1, padding: '0 24px 24px' }}>
+        {/* Doctor Cards List */}
+        <div style={{ overflowY: 'auto', flex: 1, padding: '0 24px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '48px 0', color: '#9ca3af' }}>
               <i className="fas fa-spinner fa-spin" style={{ fontSize: 28, marginBottom: 12, display: 'block' }}></i>
@@ -176,78 +290,9 @@ function DoctorsModal({ onClose, token }) {
               No doctors found
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 8px' }}>
-              <thead>
-                <tr>
-                  {['#', 'Doctor', 'Specialization', 'Experience', 'Patients', 'Status'].map(h => (
-                    <th key={h} style={{
-                      textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#9ca3af',
-                      textTransform: 'uppercase', letterSpacing: '0.06em',
-                      padding: '0 12px 8px', borderBottom: '1.5px solid #f3f4f6'
-                    }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map((doc, i) => {
-                  const active    = isActive(doc)
-                  const cellStyle = {
-                    padding: '12px', fontSize: 13,
-                    color: active ? '#1f2937' : '#9ca3af',
-                    borderTop: '1px solid #f3f4f6', borderBottom: '1px solid #f3f4f6',
-                  }
-                  return (
-                    <tr key={doc.id} style={{ opacity: active ? 1 : 0.45, background: active ? '#fff' : '#f9fafb', transition: 'opacity 0.2s' }}>
-                      <td style={{ ...cellStyle, width: 36, borderLeft: `3px solid ${active ? '#00b386' : '#d1d5db'}`, borderRadius: '8px 0 0 8px', paddingLeft: 14, color: '#9ca3af', fontWeight: 600 }}>
-                        {i + 1}
-                      </td>
-                      <td style={{ ...cellStyle, minWidth: 160 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          {doc.photoUrl ? (
-                            <img src={doc.photoUrl} alt={doc.name} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${active ? '#00b386' : '#d1d5db'}`, filter: active ? 'none' : 'grayscale(100%)' }} />
-                          ) : (
-                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: active ? '#e6f7f3' : '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: active ? '#00b386' : '#9ca3af', fontSize: 15, fontWeight: 700, flexShrink: 0 }}>
-                              {doc.name?.charAt(0)?.toUpperCase() || 'D'}
-                            </div>
-                          )}
-                          <div>
-                            <div style={{ fontWeight: 600, color: active ? '#111827' : '#9ca3af' }}>Dr. {doc.name}</div>
-                            {doc.gender && <div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'capitalize' }}>{doc.gender}</div>}
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ ...cellStyle }}>
-                        {doc.specialization
-                          ? <span style={{ background: active ? '#e6f7f3' : '#f3f4f6', color: active ? '#00b386' : '#9ca3af', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500 }}>{doc.specialization}</span>
-                          : <span style={{ color: '#d1d5db', fontSize: 12 }}>—</span>
-                        }
-                      </td>
-                      <td style={{ ...cellStyle }}>
-                        {doc.experience != null
-                          ? <span style={{ fontWeight: 500 }}>{doc.experience} yr{doc.experience !== 1 ? 's' : ''}</span>
-                          : <span style={{ color: '#d1d5db' }}>—</span>
-                        }
-                      </td>
-                      <td style={{ ...cellStyle }}>
-                        {doc.patientsHandeled != null
-                          ? <span style={{ fontWeight: 500 }}>{doc.patientsHandeled.toLocaleString()}</span>
-                          : <span style={{ color: '#d1d5db' }}>—</span>
-                        }
-                      </td>
-                      <td style={{ ...cellStyle, borderRadius: '0 8px 8px 0' }}>
-                        <span style={{
-                          padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, textTransform: 'capitalize',
-                          background: doc.verificationStatus === 'approved' ? '#dcfce7' : doc.verificationStatus === 'rejected' ? '#fee2e2' : '#fef9c3',
-                          color:      doc.verificationStatus === 'approved' ? '#16a34a' : doc.verificationStatus === 'rejected' ? '#dc2626' : '#ca8a04',
-                        }}>
-                          {doc.verificationStatus === 'approved' ? '✓ Active' : doc.verificationStatus === 'rejected' ? '✕ Rejected' : '⏳ Pending'}
-                        </span>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+            sorted.map(doc => (
+              <DoctorCard key={doc.id} doc={doc} onBook={onBook} />
+            ))
           )}
         </div>
 
@@ -256,8 +301,8 @@ function DoctorsModal({ onClose, token }) {
           <div style={{ padding: '12px 24px', borderTop: '1px solid #f3f4f6', fontSize: 12, color: '#9ca3af', flexShrink: 0, display: 'flex', justifyContent: 'space-between' }}>
             <span>Showing <strong>{sorted.length}</strong> of <strong>{doctors.length}</strong> doctors</span>
             <span>
-              <strong style={{ color: '#00b386' }}>{doctors.filter(d => d.verificationStatus === 'approved').length}</strong> active &nbsp;·&nbsp;
-              <strong style={{ color: '#9ca3af' }}>{doctors.filter(d => d.verificationStatus !== 'approved').length}</strong> inactive
+              <strong style={{ color: '#10b981' }}>{approvedCount}</strong> active &nbsp;·&nbsp;
+              <strong style={{ color: '#9ca3af' }}>{inactiveCount}</strong> inactive
             </span>
           </div>
         )}
@@ -344,10 +389,9 @@ export default function PatientDashboard() {
     } catch (err) { console.error(err) }
   }
 
-  /* ── Single nav handler for BOTH sidebar and dropdown ── */
   const handleNav = (key, closeFn) => {
     if      (key === 'feedback') navigate('/feedback')
-    else if (key === 'profile')  navigate('/patient-profile-view')  // ← View/Update Profile
+    else if (key === 'profile')  navigate('/patient-profile-view')
     else                         setActiveNav(key)
     if (closeFn) closeFn()
   }
@@ -367,14 +411,17 @@ export default function PatientDashboard() {
     }
   }
 
-  const handleOfferingClick = (key) => {
-  if (key === 'doctors') {
-    setDoctorsModal(true)
-  } 
-  else if (key === 'video') {
-    navigate('/telemedicine')   // ✅ ADD THIS
+  // When patient books from the modal, go to telemedicine with the doctor pre-selected
+  const handleBookDoctor = (doc) => {
+    setDoctorsModal(false)
+    navigate('/telemedicine', { state: { selectedDoctor: doc } })
   }
-}
+
+  const handleOfferingClick = (key) => {
+    if      (key === 'doctors') setDoctorsModal(true)
+    else if (key === 'video')   navigate('/telemedicine')
+  }
+
   const now      = new Date()
   const initials = currentUser?.name
     ? currentUser.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -507,7 +554,7 @@ export default function PatientDashboard() {
                   <div
                     className="pd-offering-card" key={o.label}
                     onClick={() => handleOfferingClick(o.key)}
-                    style={{ cursor: o.key === 'doctors' ? 'pointer' : 'default' }}
+                    style={{ cursor: (o.key === 'doctors' || o.key === 'video') ? 'pointer' : 'default' }}
                   >
                     <div className="pd-offering-card__icon" style={{ background: o.color + '1a', color: o.color }}>
                       <i className={`fas ${o.icon}`}></i>
@@ -768,7 +815,13 @@ export default function PatientDashboard() {
       )}
 
       {/* ══ DOCTORS MODAL ══ */}
-      {doctorsModal && <DoctorsModal onClose={() => setDoctorsModal(false)} token={token} />}
+      {doctorsModal && (
+        <DoctorsModal
+          onClose={() => setDoctorsModal(false)}
+          token={token}
+          onBook={handleBookDoctor}
+        />
+      )}
 
       {/* ── View Prescription Modal ── */}
       {viewPrescription && <ViewPrescriptionModal prescription={viewPrescription} onClose={() => setViewPrescription(null)} />}

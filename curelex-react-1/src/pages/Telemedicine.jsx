@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { API, authHeaders } from '../utils/helpers'
 
@@ -23,31 +23,31 @@ const CONCERNS = [
   { label: 'Child not feeling well',       icon: '🧒' },
   { label: 'Performance issues in bed',    icon: '💊' },
 ]
-const isMobile = window.innerWidth < 768
-{!isMobile && (
-  <div style={{ 
-    display: 'flex', 
-    flexDirection: 'column', 
-    alignItems: 'center', 
-    gap: 16, 
-    minWidth: 200 
-  }}>
-    {/* avatar + doctors online */}
-  </div>
-)}
+
 /* ══════════════════════════════════════════════════════════
    DOCTOR CARD
    ══════════════════════════════════════════════════════════ */
 function DoctorCard({ doc, onConsult }) {
   const [hovered, setHovered] = useState(false)
 
+  const isAvailable = doc.verificationStatus === 'approved' && doc.isActive === true
+
+  // ✅ FIX 1: Show actual specialization from doctor's profile,
+  //           no fallback to 'General Physician'
+  const specialization = doc.specialization || ''
+
+  // ✅ FIX 2: Show experience with "+" suffix (e.g. "5+ yrs")
+  const experienceLabel = doc.experience != null
+    ? `${doc.experience}+ yr${doc.experience !== 1 ? 's' : ''} experience`
+    : null
+
   return (
     <div
-      onMouseEnter={() => setHovered(true)}
+      onMouseEnter={() => isAvailable && setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: '#fff',
-        border: `1.5px solid ${hovered ? '#2563eb' : '#e5e7eb'}`,
+        background: isAvailable ? '#fff' : '#f9fafb',
+        border: `1.5px solid ${hovered ? '#2563eb' : isAvailable ? '#e5e7eb' : '#e5e7eb'}`,
         borderRadius: 20,
         padding: '20px 20px 16px',
         display: 'flex',
@@ -59,14 +59,17 @@ function DoctorCard({ doc, onConsult }) {
         cursor: 'default',
         position: 'relative',
         overflow: 'hidden',
+        opacity: isAvailable ? 1 : 0.52,
+        filter: isAvailable ? 'none' : 'grayscale(70%)',
       }}
     >
-      {/* Online dot */}
+      {/* Status dot */}
       <span style={{
         position: 'absolute', top: 14, right: 14,
-        background: '#22c55e', width: 10, height: 10,
+        background: isAvailable ? '#22c55e' : '#9ca3af',
+        width: 10, height: 10,
         borderRadius: '50%', border: '2px solid #fff',
-        boxShadow: '0 0 0 3px rgba(34,197,94,0.2)',
+        boxShadow: isAvailable ? '0 0 0 3px rgba(34,197,94,0.2)' : 'none',
       }} />
 
       {/* Avatar + name */}
@@ -74,26 +77,36 @@ function DoctorCard({ doc, onConsult }) {
         {doc.photoUrl ? (
           <img src={doc.photoUrl} alt={doc.name} style={{
             width: 60, height: 60, borderRadius: '50%', objectFit: 'cover',
-            border: '2px solid #dbeafe',
+            border: `2px solid ${isAvailable ? '#dbeafe' : '#e5e7eb'}`,
           }} />
         ) : (
           <div style={{
             width: 60, height: 60, borderRadius: '50%',
-            background: 'linear-gradient(135deg,#dbeafe,#bfdbfe)',
+            background: isAvailable
+              ? 'linear-gradient(135deg,#dbeafe,#bfdbfe)'
+              : 'linear-gradient(135deg,#f3f4f6,#e5e7eb)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 22, fontWeight: 700, color: '#2563eb', flexShrink: 0,
+            fontSize: 22, fontWeight: 700,
+            color: isAvailable ? '#2563eb' : '#9ca3af',
+            flexShrink: 0,
           }}>
             {doc.name?.charAt(0)?.toUpperCase() || 'D'}
           </div>
         )}
         <div>
-          <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>Dr. {doc.name}</div>
-          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
-            {doc.specialization || 'General Physician'}
+          <div style={{ fontWeight: 700, fontSize: 15, color: isAvailable ? '#111827' : '#6b7280' }}>
+            Dr. {doc.name}
           </div>
-          {doc.experience != null && (
+          {/* ✅ FIX 1 APPLIED: Only show specialization if it exists, no hardcoded fallback */}
+          {specialization ? (
+            <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+              {specialization}
+            </div>
+          ) : null}
+          {/* ✅ FIX 2 APPLIED: Experience shown as "5+ yrs experience" */}
+          {experienceLabel && (
             <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
-              {doc.experience} yr{doc.experience !== 1 ? 's' : ''} experience
+              {experienceLabel}
             </div>
           )}
         </div>
@@ -101,50 +114,70 @@ function DoctorCard({ doc, onConsult }) {
 
       {/* Tags */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <span style={{ background: '#eff6ff', color: '#2563eb', fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 20 }}>
-          ✓ Verified
-        </span>
-        <span style={{ background: '#f0fdf4', color: '#16a34a', fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 20 }}>
-          🟢 Online Now
-        </span>
+        {isAvailable ? (
+          <>
+            <span style={{ background: '#eff6ff', color: '#2563eb', fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 20 }}>
+              ✓ Verified
+            </span>
+            <span style={{ background: '#f0fdf4', color: '#16a34a', fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 20 }}>
+              🟢 Online Now
+            </span>
+          </>
+        ) : (
+          <span style={{ background: '#f3f4f6', color: '#9ca3af', fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 20 }}>
+            {doc.verificationStatus === 'rejected'
+              ? '✕ Not Available'
+              : doc.verificationStatus === 'approved'
+                ? '🔴 Offline'
+                : '⏳ Pending Approval'}
+          </span>
+        )}
       </div>
 
       {/* Stats row */}
-      <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#6b7280' }}>
+      <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#6b7280', flexWrap: 'wrap' }}>
         {doc.patientsHandeled != null && (
           <span>👥 {doc.patientsHandeled.toLocaleString()} patients</span>
         )}
-        <span>⏱ ~5 min wait</span>
+        {doc.gender && (
+          <span style={{ textTransform: 'capitalize' }}>
+            {doc.gender === 'female' ? '♀' : '♂'} {doc.gender}
+          </span>
+        )}
+        {doc.regState && (
+          <span>📍 {doc.regState}</span>
+        )}
+        {isAvailable && <span>⏱ ~5 min wait</span>}
       </div>
 
       {/* Fee + CTA */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-        <div>
-          <div style={{ fontSize: 11, color: '#9ca3af' }}>Consultation fee</div>
-          <div style={{ fontWeight: 700, fontSize: 17, color: '#111827' }}>₹299</div>
-        </div>
-        <button
-          onClick={() => onConsult(doc)}
-          style={{
-            background: 'linear-gradient(135deg,#2563eb,#1d4ed8)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 12,
-            padding: '10px 20px',
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'opacity 0.18s',
-            fontFamily: 'inherit',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 7,
-          }}
-          onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
-          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-        >
-          <span style={{ fontSize: 15 }}>📹</span> Consult Now
-        </button>
+        {isAvailable ? (
+          <>
+            <div>
+              <div style={{ fontSize: 11, color: '#9ca3af' }}>Consultation fee</div>
+              <div style={{ fontWeight: 700, fontSize: 17, color: '#111827' }}>₹299</div>
+            </div>
+            <button
+              onClick={() => onConsult(doc)}
+              style={{
+                background: 'linear-gradient(135deg,#2563eb,#1d4ed8)',
+                color: '#fff', border: 'none', borderRadius: 12,
+                padding: '10px 20px', fontSize: 13, fontWeight: 600,
+                cursor: 'pointer', transition: 'opacity 0.18s',
+                fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 7,
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            >
+              <span style={{ fontSize: 15 }}>📹</span> Consult Now
+            </button>
+          </>
+        ) : (
+          <span style={{ fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>
+            Currently unavailable for consultations
+          </span>
+        )}
       </div>
     </div>
   )
@@ -155,91 +188,103 @@ function DoctorCard({ doc, onConsult }) {
    ══════════════════════════════════════════════════════════ */
 export default function TelemedicinePage() {
   const { currentUser, token } = useAuth()
-  const navigate = useNavigate()
+  const navigate  = useNavigate()
+  const location  = useLocation()
 
-  const [doctors,      setDoctors]      = useState([])
+  const [allDoctors,   setAllDoctors]   = useState([])
   const [loading,      setLoading]      = useState(true)
   const [activeSpec,   setActiveSpec]   = useState('All')
   const [searchQuery,  setSearchQuery]  = useState('')
-  const [consultModal, setConsultModal] = useState(null) // selected doctor
+  const [consultModal, setConsultModal] = useState(null)
 
   useEffect(() => {
     if (!currentUser) { navigate('/'); return }
+
+    if (location.state?.selectedDoctor) {
+      setConsultModal(location.state.selectedDoctor)
+    }
+
     ;(async () => {
       try {
         const res  = await fetch(`${API}/doctors`, { headers: authHeaders(token) })
         const data = await res.json()
-        if (data.success && data.doctors) {
-          setDoctors(data.doctors.filter(d => d.verificationStatus === 'approved'))
-        }
+        const list = data.doctors || (Array.isArray(data) ? data : [])
+        list.sort((a, b) => {
+          const score = (d) => {
+            if (d.verificationStatus === 'approved' && d.isActive) return 0
+            if (d.verificationStatus === 'approved' && !d.isActive) return 1
+            if (d.verificationStatus === 'pending') return 2
+            return 3
+          }
+          return score(a) - score(b)
+        })
+        setAllDoctors(list)
       } catch (e) { console.error(e) }
       finally { setLoading(false) }
     })()
   }, [])
 
-  const specs = ['All', ...new Set(doctors.filter(d => d.specialization).map(d => d.specialization))]
+  const onlineDoctors = allDoctors.filter(d => d.verificationStatus === 'approved' && d.isActive === true)
 
-  const filtered = doctors.filter(d => {
+  const specs = ['All', ...new Set(onlineDoctors.filter(d => d.specialization).map(d => d.specialization))]
+
+  const filtered = allDoctors.filter(d => {
+    const available = d.verificationStatus === 'approved' && d.isActive === true
+    if (!available) return true
     const matchSpec   = activeSpec === 'All' || d.specialization === activeSpec
     const matchSearch = !searchQuery ||
       d.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       d.specialization?.toLowerCase().includes(searchQuery.toLowerCase())
     return matchSpec && matchSearch
+  }).filter(d => {
+    if (!searchQuery) return true
+    return (
+      d.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      d.specialization?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
   })
-
-  /* ── Booking confirmed modal ── */
-  function handleConsult(doc) { setConsultModal(doc) }
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'Nunito', 'Segoe UI', sans-serif" }}>
 
-      {/* ── Google Font ── */}
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');`}</style>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
+        @keyframes slideUp {
+          from { transform: translateY(30px); opacity: 0; }
+          to   { transform: translateY(0);    opacity: 1; }
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 768px) {
+          .tele-hero-right { display: none !important; }
+          .tele-topbar { flex-direction: column !important; align-items: flex-start !important; }
+        }
+      `}</style>
 
       {/* ══ TOPBAR ══ */}
-      <header style={{
-  background: '#fff',
-  borderBottom: '1px solid #e5e7eb',
-  padding: '10px 16px',
-  display: 'flex',
-  flexDirection: window.innerWidth < 768 ? 'column' : 'row', // ✅ MOBILE FIX
-  alignItems: window.innerWidth < 768 ? 'flex-start' : 'center',
-  gap: 8,
-}}>
-
-  {/* Logo */}
-  <img 
-    src="/assets/logo.png" 
-    alt="CURELEX" 
-    style={{ height: 36 }}
-  />
-
-  {/* Title */}
-  <div style={{ 
-    display: 'flex', 
-    alignItems: 'center', 
-    gap: 8 
-  }}>
-    <span>📹</span>
-    <span style={{ 
-      fontWeight: 800, 
-      fontSize: 16, 
-      color: '#111827' 
-    }}>
-      Video Consultation
-    </span>
-  </div>
-
-</header>
+      <header className="tele-topbar" style={{
+        background: '#fff', borderBottom: '1px solid #e5e7eb',
+        padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 12,
+      }}>
+        <img src="/assets/logo.png" alt="CURELEX" style={{ height: 36, cursor: 'pointer' }}
+          onClick={() => navigate('/patient-dashboard')} />
+        <div style={{ width: 1, height: 28, background: '#e5e7eb' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span>📹</span>
+          <span style={{ fontWeight: 800, fontSize: 16, color: '#111827' }}>Video Consultation</span>
+        </div>
+        <button
+          onClick={() => navigate(-1)}
+          style={{ marginLeft: 'auto', background: 'none', border: '1px solid #e5e7eb', borderRadius: 8, padding: '6px 14px', fontSize: 13, color: '#6b7280', cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          ← Back
+        </button>
+      </header>
 
       {/* ══ HERO BANNER ══ */}
       <div style={{
         background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 40%, #bfdbfe 100%)',
-        padding: '56px 40px',
-        position: 'relative',
-        overflow: 'hidden',
+        padding: '56px 40px', position: 'relative', overflow: 'hidden',
       }}>
-        {/* Decorative blobs */}
         <div style={{ position: 'absolute', top: -60, right: -60, width: 300, height: 300, borderRadius: '50%', background: 'rgba(37,99,235,0.07)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: -40, left: '35%', width: 200, height: 200, borderRadius: '50%', background: 'rgba(99,102,241,0.06)', pointerEvents: 'none' }} />
 
@@ -264,12 +309,10 @@ export default function TelemedicinePage() {
             <button
               onClick={() => document.getElementById('tele-doctors')?.scrollIntoView({ behavior: 'smooth' })}
               style={{
-                background: 'linear-gradient(135deg,#2563eb,#1d4ed8)',
-                color: '#fff', border: 'none', borderRadius: 14,
-                padding: '14px 36px', fontSize: 16, fontWeight: 700,
-                cursor: 'pointer', fontFamily: 'inherit',
-                boxShadow: '0 4px 18px rgba(37,99,235,0.35)',
-                transition: 'transform 0.15s',
+                background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', color: '#fff',
+                border: 'none', borderRadius: 14, padding: '14px 36px', fontSize: 16,
+                fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                boxShadow: '0 4px 18px rgba(37,99,235,0.35)', transition: 'transform 0.15s',
               }}
               onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.03)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
@@ -278,16 +321,7 @@ export default function TelemedicinePage() {
             </button>
           </div>
 
-          {/* Hero illustration: doctor avatars + live counter */}
-          <div 
-  style={{ 
-    display: window.innerWidth < 768 ? 'none' : 'flex',  // 👈 HIDE ON MOBILE
-    flexDirection: 'column', 
-    alignItems: 'center', 
-    gap: 16, 
-    minWidth: 200 
-  }}
->
+          <div className="tele-hero-right" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, minWidth: 200 }}>
             <div style={{ position: 'relative', width: 120, height: 120 }}>
               <div style={{ width: 120, height: 120, borderRadius: '50%', background: 'linear-gradient(135deg,#2563eb,#6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 56 }}>
                 👨‍⚕️
@@ -296,7 +330,7 @@ export default function TelemedicinePage() {
             </div>
             <div style={{ background: '#fff', borderRadius: 16, padding: '12px 24px', textAlign: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
               <div style={{ fontSize: 28, fontWeight: 800, color: '#2563eb' }}>
-                {loading ? '…' : `+${doctors.length}`}
+                {loading ? '…' : `+${onlineDoctors.length}`}
               </div>
               <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>Doctors Online</div>
             </div>
@@ -334,7 +368,7 @@ export default function TelemedicinePage() {
       {/* ══ DOCTORS SECTION ══ */}
       <div id="tele-doctors" style={{ maxWidth: 1100, margin: '40px auto', padding: '0 24px' }}>
 
-        {/* Search + filters */}
+        {/* Search */}
         <div style={{ marginBottom: 24 }}>
           <div style={{ position: 'relative', maxWidth: 460, marginBottom: 18 }}>
             <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 15, color: '#9ca3af' }}>🔍</span>
@@ -355,7 +389,6 @@ export default function TelemedicinePage() {
             />
           </div>
 
-          {/* Speciality pills */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {specs.map(s => (
               <button
@@ -363,8 +396,7 @@ export default function TelemedicinePage() {
                 onClick={() => setActiveSpec(s)}
                 style={{
                   padding: '7px 16px', borderRadius: 22, fontSize: 12, fontWeight: 600,
-                  border: '1.5px solid', cursor: 'pointer', fontFamily: 'inherit',
-                  transition: 'all 0.17s',
+                  border: '1.5px solid', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.17s',
                   borderColor: activeSpec === s ? '#2563eb' : '#e5e7eb',
                   background:  activeSpec === s ? '#2563eb' : '#fff',
                   color:       activeSpec === s ? '#fff'    : '#6b7280',
@@ -376,18 +408,26 @@ export default function TelemedicinePage() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        {/* Header row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
           <h2 style={{ fontWeight: 800, fontSize: 20, color: '#111827', margin: 0 }}>
             Available Doctors
           </h2>
-          <span style={{ fontSize: 13, color: '#6b7280' }}>
-            {filtered.length} doctor{filtered.length !== 1 ? 's' : ''} found
-          </span>
+          <div style={{ display: 'flex', gap: 16, fontSize: 13, color: '#6b7280' }}>
+            <span>
+              <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#22c55e', marginRight: 5 }}></span>
+              {onlineDoctors.length} online
+            </span>
+            <span>
+              <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#9ca3af', marginRight: 5 }}></span>
+              {allDoctors.length - onlineDoctors.length} offline / pending
+            </span>
+          </div>
         </div>
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '80px 0', color: '#9ca3af', fontSize: 15 }}>
-            <div style={{ fontSize: 36, marginBottom: 12, animation: 'spin 1s linear infinite' }}>⏳</div>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>⏳</div>
             Loading doctors…
           </div>
         ) : filtered.length === 0 ? (
@@ -396,13 +436,9 @@ export default function TelemedicinePage() {
             No doctors found matching your search.
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: 20,
-          }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
             {filtered.map(doc => (
-              <DoctorCard key={doc.id} doc={doc} onConsult={handleConsult} />
+              <DoctorCard key={doc.id} doc={doc} onConsult={setConsultModal} />
             ))}
           </div>
         )}
@@ -438,17 +474,31 @@ export default function TelemedicinePage() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 24 }}>
-              <div style={{
-                width: 52, height: 52, borderRadius: '50%',
-                background: 'linear-gradient(135deg,#dbeafe,#bfdbfe)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 20, fontWeight: 700, color: '#2563eb', flexShrink: 0,
-              }}>
-                {consultModal.name?.charAt(0)?.toUpperCase() || 'D'}
-              </div>
+              {consultModal.photoUrl ? (
+                <img src={consultModal.photoUrl} alt={consultModal.name}
+                  style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', border: '2px solid #dbeafe' }} />
+              ) : (
+                <div style={{
+                  width: 52, height: 52, borderRadius: '50%',
+                  background: 'linear-gradient(135deg,#dbeafe,#bfdbfe)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 20, fontWeight: 700, color: '#2563eb', flexShrink: 0,
+                }}>
+                  {consultModal.name?.charAt(0)?.toUpperCase() || 'D'}
+                </div>
+              )}
               <div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>Dr. {consultModal.name}</div>
-                <div style={{ fontSize: 13, color: '#6b7280' }}>{consultModal.specialization || 'General Physician'}</div>
+                {/* ✅ FIX 1 APPLIED IN MODAL TOO: no hardcoded 'General Physician' fallback */}
+                {consultModal.specialization && (
+                  <div style={{ fontSize: 13, color: '#6b7280' }}>{consultModal.specialization}</div>
+                )}
+                {/* ✅ FIX 2 APPLIED IN MODAL TOO: experience with "+" */}
+                {consultModal.experience != null && (
+                  <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
+                    {consultModal.experience}+ yrs experience
+                  </div>
+                )}
                 <div style={{ fontSize: 12, color: '#22c55e', fontWeight: 600, marginTop: 2 }}>🟢 Available Now</div>
               </div>
               <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
@@ -470,13 +520,11 @@ export default function TelemedicinePage() {
               </button>
               <button
                 onClick={() => {
-                  // TODO: wire to your booking/payment flow
                   alert(`Booking consultation with Dr. ${consultModal.name}…`)
                   setConsultModal(null)
                 }}
                 style={{
-                  flex: 2,
-                  background: 'linear-gradient(135deg,#2563eb,#1d4ed8)',
+                  flex: 2, background: 'linear-gradient(135deg,#2563eb,#1d4ed8)',
                   color: '#fff', border: 'none', borderRadius: 12,
                   padding: '13px 0', fontSize: 14, fontWeight: 700,
                   cursor: 'pointer', fontFamily: 'inherit',
@@ -489,16 +537,6 @@ export default function TelemedicinePage() {
           </div>
         </div>
       )}
-
-      <style>{`
-        @keyframes slideUp {
-          from { transform: translateY(30px); opacity: 0; }
-          to   { transform: translateY(0);    opacity: 1; }
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   )
 }
