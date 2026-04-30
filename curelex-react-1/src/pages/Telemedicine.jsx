@@ -32,11 +32,8 @@ function DoctorCard({ doc, onConsult }) {
 
   const isAvailable = doc.verificationStatus === 'approved' && doc.isActive === true
 
-  // ✅ FIX 1: Show actual specialization from doctor's profile,
-  //           no fallback to 'General Physician'
   const specialization = doc.specialization || ''
 
-  // ✅ FIX 2: Show experience with "+" suffix (e.g. "5+ yrs")
   const experienceLabel = doc.experience != null
     ? `${doc.experience}+ yr${doc.experience !== 1 ? 's' : ''} experience`
     : null
@@ -97,13 +94,11 @@ function DoctorCard({ doc, onConsult }) {
           <div style={{ fontWeight: 700, fontSize: 15, color: isAvailable ? '#111827' : '#6b7280' }}>
             Dr. {doc.name}
           </div>
-          {/* ✅ FIX 1 APPLIED: Only show specialization if it exists, no hardcoded fallback */}
           {specialization ? (
             <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
               {specialization}
             </div>
           ) : null}
-          {/* ✅ FIX 2 APPLIED: Experience shown as "5+ yrs experience" */}
           {experienceLabel && (
             <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
               {experienceLabel}
@@ -200,6 +195,12 @@ export default function TelemedicinePage() {
   useEffect(() => {
     if (!currentUser) { navigate('/'); return }
 
+    // ✅ Auto-apply specialization filter if coming from a speciality card
+    if (location.state?.filterSpec) {
+      setActiveSpec(location.state.filterSpec)
+    }
+
+    // ✅ Auto-open consult modal if coming from "Find Doctors" modal
     if (location.state?.selectedDoctor) {
       setConsultModal(location.state.selectedDoctor)
     }
@@ -222,27 +223,26 @@ export default function TelemedicinePage() {
       } catch (e) { console.error(e) }
       finally { setLoading(false) }
     })()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const onlineDoctors = allDoctors.filter(d => d.verificationStatus === 'approved' && d.isActive === true)
 
-  const specs = ['All', ...new Set(onlineDoctors.filter(d => d.specialization).map(d => d.specialization))]
+  // ✅ Build spec filter pills from ALL doctors (not just online)
+  // so the filter pill is shown even if the matched doctor is offline
+  const specs = ['All', ...new Set(
+    allDoctors.filter(d => d.specialization).map(d => d.specialization)
+  )]
 
   const filtered = allDoctors.filter(d => {
-    const available = d.verificationStatus === 'approved' && d.isActive === true
-    if (!available) return true
-    const matchSpec   = activeSpec === 'All' || d.specialization === activeSpec
+    const matchSpec = activeSpec === 'All' || d.specialization === activeSpec
     const matchSearch = !searchQuery ||
       d.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       d.specialization?.toLowerCase().includes(searchQuery.toLowerCase())
     return matchSpec && matchSearch
-  }).filter(d => {
-    if (!searchQuery) return true
-    return (
-      d.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.specialization?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
   })
+
+  // ✅ Among the filtered list, count available ones for feedback message
+  const filteredOnline = filtered.filter(d => d.verificationStatus === 'approved' && d.isActive === true)
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'Nunito', 'Segoe UI', sans-serif" }}>
@@ -272,6 +272,24 @@ export default function TelemedicinePage() {
           <span>📹</span>
           <span style={{ fontWeight: 800, fontSize: 16, color: '#111827' }}>Video Consultation</span>
         </div>
+        {/* ✅ Show active filter label in topbar when a speciality is selected */}
+        {activeSpec !== 'All' && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: '#eff6ff', border: '1.5px solid #bfdbfe',
+            borderRadius: 20, padding: '4px 12px', fontSize: 13, color: '#2563eb', fontWeight: 600,
+          }}>
+            <span>🔍</span>
+            {activeSpec}
+            <button
+              onClick={() => setActiveSpec('All')}
+              style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1, display: 'flex', alignItems: 'center' }}
+              title="Clear filter"
+            >
+              ×
+            </button>
+          </div>
+        )}
         <button
           onClick={() => navigate(-1)}
           style={{ marginLeft: 'auto', background: 'none', border: '1px solid #e5e7eb', borderRadius: 8, padding: '6px 14px', fontSize: 13, color: '#6b7280', cursor: 'pointer', fontFamily: 'inherit' }}
@@ -389,6 +407,7 @@ export default function TelemedicinePage() {
             />
           </div>
 
+          {/* ✅ Specialization filter pills — built from all doctors */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {specs.map(s => (
               <button
@@ -410,9 +429,26 @@ export default function TelemedicinePage() {
 
         {/* Header row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
-          <h2 style={{ fontWeight: 800, fontSize: 20, color: '#111827', margin: 0 }}>
-            Available Doctors
-          </h2>
+          <div>
+            <h2 style={{ fontWeight: 800, fontSize: 20, color: '#111827', margin: 0 }}>
+              {activeSpec === 'All' ? 'Available Doctors' : `${activeSpec} Doctors`}
+            </h2>
+            {/* ✅ Helpful message when a filter is active */}
+            {activeSpec !== 'All' && !loading && (
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6b7280' }}>
+                {filteredOnline.length > 0
+                  ? `${filteredOnline.length} ${activeSpec} doctor${filteredOnline.length !== 1 ? 's' : ''} available online`
+                  : `No ${activeSpec} doctors are online right now`}
+                {' · '}
+                <button
+                  onClick={() => setActiveSpec('All')}
+                  style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: 13, padding: 0, textDecoration: 'underline', fontFamily: 'inherit' }}
+                >
+                  View all doctors
+                </button>
+              </p>
+            )}
+          </div>
           <div style={{ display: 'flex', gap: 16, fontSize: 13, color: '#6b7280' }}>
             <span>
               <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#22c55e', marginRight: 5 }}></span>
@@ -434,6 +470,20 @@ export default function TelemedicinePage() {
           <div style={{ textAlign: 'center', padding: '80px 0', color: '#9ca3af', fontSize: 15 }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
             No doctors found matching your search.
+            {activeSpec !== 'All' && (
+              <div style={{ marginTop: 16 }}>
+                <button
+                  onClick={() => setActiveSpec('All')}
+                  style={{
+                    background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', color: '#fff',
+                    border: 'none', borderRadius: 10, padding: '10px 24px',
+                    fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  View All Doctors
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
@@ -489,11 +539,9 @@ export default function TelemedicinePage() {
               )}
               <div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>Dr. {consultModal.name}</div>
-                {/* ✅ FIX 1 APPLIED IN MODAL TOO: no hardcoded 'General Physician' fallback */}
                 {consultModal.specialization && (
                   <div style={{ fontSize: 13, color: '#6b7280' }}>{consultModal.specialization}</div>
                 )}
-                {/* ✅ FIX 2 APPLIED IN MODAL TOO: experience with "+" */}
                 {consultModal.experience != null && (
                   <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
                     {consultModal.experience}+ yrs experience

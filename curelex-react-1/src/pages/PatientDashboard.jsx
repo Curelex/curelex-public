@@ -50,6 +50,16 @@ const FOLLOWUP_DETAILS = [
   { icon: 'fa-pills',     label: 'Medications', value: '3 prescribed'         },
 ]
 
+/* ─── Speciality cards with specialization mapping ──────────── */
+const CONSULT_SPECIALITIES = [
+  { label: 'Period doubts or Pregnancy',  icon: 'fa-venus',           color: '#f9a8d4', spec: 'Gynaecologist'     },
+  { label: 'Acne, pimple or skin issues', icon: 'fa-face-meh',        color: '#fcd34d', spec: 'Dermatologist'     },
+  { label: 'Performance issues in bed',   icon: 'fa-heart-pulse',     color: '#f87171', spec: 'General Physician' },
+  { label: 'Cold, cough or fever',        icon: 'fa-head-side-cough', color: '#93c5fd', spec: 'General Physician' },
+  { label: 'Child not feeling well',      icon: 'fa-baby',            color: '#86efac', spec: 'Paediatrician'     },
+  { label: 'Depression or anxiety',       icon: 'fa-brain',           color: '#c4b5fd', spec: 'Psychiatrist'      },
+]
+
 /* ═══════════════════════════════════════════════════════════════
    DOCTOR CARD — used in both "Find Doctors" modal and Telemedicine
    ═══════════════════════════════════════════════════════════════ */
@@ -87,7 +97,6 @@ export function DoctorCard({ doc, onBook }) {
             {doc.name?.charAt(0)?.toUpperCase() || 'D'}
           </div>
         )}
-        {/* Active indicator dot */}
         <span style={{
           position: 'absolute', bottom: 2, right: 2,
           width: 14, height: 14, borderRadius: '50%',
@@ -160,8 +169,7 @@ export function DoctorCard({ doc, onBook }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   DOCTORS MODAL  — "Find Doctors Near You"
-   FIX: fetch from /doctors (GET /) which returns ALL doctors
+   DOCTORS MODAL
    ═══════════════════════════════════════════════════════════════ */
 function DoctorsModal({ onClose, token, onBook }) {
   const [doctors,     setDoctors]     = useState([])
@@ -172,10 +180,8 @@ function DoctorsModal({ onClose, token, onBook }) {
   useEffect(() => {
     async function fetchDoctors() {
       try {
-        // ✅ FIXED: was /doctors — route didn't exist. Now uses GET /doctors/
         const res  = await fetch(`${API}/doctors`, { headers: authHeaders(token) })
         const data = await res.json()
-        // handle both { success, doctors } and plain array
         const list = data.doctors || (Array.isArray(data) ? data : [])
         setDoctors(list)
       } catch (err) {
@@ -199,14 +205,13 @@ function DoctorsModal({ onClose, token, onBook }) {
     return matchSearch && matchSpec
   })
 
-  // Approved doctors first, then pending, then rejected
   const sorted = [...filtered].sort((a, b) => {
     const order = { approved: 0, pending: 1, rejected: 2 }
     return (order[a.verificationStatus] ?? 1) - (order[b.verificationStatus] ?? 1)
   })
 
-  const approvedCount  = doctors.filter(d => d.verificationStatus === 'approved').length
-  const inactiveCount  = doctors.length - approvedCount
+  const approvedCount = doctors.filter(d => d.verificationStatus === 'approved').length
+  const inactiveCount = doctors.length - approvedCount
 
   return (
     <div className="pd-modal-overlay" onClick={onClose}>
@@ -215,7 +220,6 @@ function DoctorsModal({ onClose, token, onBook }) {
         onClick={e => e.stopPropagation()}
         style={{ maxWidth: 860, width: '95vw', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
       >
-        {/* Header */}
         <div className="pd-modal__head" style={{ position: 'relative', flexShrink: 0 }}>
           <button className="pd-modal__close" onClick={onClose} style={{ position: 'absolute', top: 14, right: 14 }}>
             <i className="fas fa-times"></i>
@@ -227,7 +231,6 @@ function DoctorsModal({ onClose, token, onBook }) {
           <p>Browse all available doctors and their specializations</p>
         </div>
 
-        {/* Search + Filters */}
         <div style={{ padding: '0 24px 16px', flexShrink: 0 }}>
           <div style={{ position: 'relative', marginBottom: 14 }}>
             <i className="fas fa-search" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 14 }}></i>
@@ -264,7 +267,6 @@ function DoctorsModal({ onClose, token, onBook }) {
           )}
         </div>
 
-        {/* Legend */}
         <div style={{ padding: '0 24px 12px', display: 'flex', gap: 20, flexShrink: 0 }}>
           {[
             { color: '#10b981', label: 'Active (Approved)' },
@@ -277,7 +279,6 @@ function DoctorsModal({ onClose, token, onBook }) {
           ))}
         </div>
 
-        {/* Doctor Cards List */}
         <div style={{ overflowY: 'auto', flex: 1, padding: '0 24px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '48px 0', color: '#9ca3af' }}>
@@ -296,7 +297,6 @@ function DoctorsModal({ onClose, token, onBook }) {
           )}
         </div>
 
-        {/* Footer */}
         {!loading && (
           <div style={{ padding: '12px 24px', borderTop: '1px solid #f3f4f6', fontSize: 12, color: '#9ca3af', flexShrink: 0, display: 'flex', justifyContent: 'space-between' }}>
             <span>Showing <strong>{sorted.length}</strong> of <strong>{doctors.length}</strong> doctors</span>
@@ -411,7 +411,6 @@ export default function PatientDashboard() {
     }
   }
 
-  // When patient books from the modal, go to telemedicine with the doctor pre-selected
   const handleBookDoctor = (doc) => {
     setDoctorsModal(false)
     navigate('/telemedicine', { state: { selectedDoctor: doc } })
@@ -420,6 +419,11 @@ export default function PatientDashboard() {
   const handleOfferingClick = (key) => {
     if      (key === 'doctors') setDoctorsModal(true)
     else if (key === 'video')   navigate('/telemedicine')
+  }
+
+  // ✅ Navigate to telemedicine with specialization filter pre-applied
+  const handleConsultNow = (spec) => {
+    navigate('/telemedicine', { state: { filterSpec: spec } })
   }
 
   const now      = new Date()
@@ -566,7 +570,7 @@ export default function PatientDashboard() {
               </div>
             </div>
 
-            {/* Consult Specialities */}
+            {/* ══ Consult Specialities ══ */}
             <div className="consult-section-wrapper">
               <section className="consult-section">
                 <div className="consult-header">
@@ -574,23 +578,28 @@ export default function PatientDashboard() {
                     <h2>Consult top doctors online for any health concern</h2>
                     <p>Private online consultations with verified doctors in all specialists</p>
                   </div>
-                  <button className="btn-view-all">View All Specialities</button>
+                  {/* ✅ View All → goes to telemedicine with no filter */}
+                  <button
+                    className="btn-view-all"
+                    onClick={() => navigate('/telemedicine')}
+                  >
+                    View All Specialities
+                  </button>
                 </div>
                 <div className="consult-grid">
-                  {[
-                    { label: 'Period doubts or Pregnancy',  icon: 'fa-venus',           color: '#f9a8d4' },
-                    { label: 'Acne, pimple or skin issues', icon: 'fa-face-meh',        color: '#fcd34d' },
-                    { label: 'Performance issues in bed',   icon: 'fa-heart-pulse',     color: '#f87171' },
-                    { label: 'Cold, cough or fever',        icon: 'fa-head-side-cough', color: '#93c5fd' },
-                    { label: 'Child not feeling well',      icon: 'fa-baby',            color: '#86efac' },
-                    { label: 'Depression or anxiety',       icon: 'fa-brain',           color: '#c4b5fd' },
-                  ].map((item, i) => (
+                  {CONSULT_SPECIALITIES.map((item, i) => (
                     <div className="consult-card" key={i}>
                       <div className="consult-img-wrap" style={{ background: item.color + '33' }}>
                         <i className={`fas ${item.icon}`} style={{ fontSize: 36, color: item.color }}></i>
                       </div>
                       <p>{item.label}</p>
-                      <button className="consult-now-btn">CONSULT NOW</button>
+                      {/* ✅ CONSULT NOW navigates to telemedicine with filterSpec in state */}
+                      <button
+                        className="consult-now-btn"
+                        onClick={() => handleConsultNow(item.spec)}
+                      >
+                        CONSULT NOW
+                      </button>
                     </div>
                   ))}
                 </div>
