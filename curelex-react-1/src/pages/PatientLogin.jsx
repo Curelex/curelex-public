@@ -6,26 +6,30 @@ import { useAuth } from '../context/AuthContext'
 import { API } from '../utils/helpers'
 
 export default function PatientLogin() {
-  const [email, setEmail] = useState('')
+  const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
-  const [showPw, setShowPw] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
-  const navigate = useNavigate()
-  const showToast = useToast()
+  const [showPw,   setShowPw]   = useState(false)
+  const [loading,  setLoading]  = useState(false)
+  const { login }  = useAuth()
+  const navigate   = useNavigate()
+  const showToast  = useToast()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     try {
-      const res = await fetch(`${API}/patients/login`, {
-        method: 'POST',
+      // ✅ FIX: was /patients/login — correct route is /users/login
+      //         because app.js mounts userRoutes at /api/users
+      const res = await fetch(`${API}/users/login`, {
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body:    JSON.stringify({ email, password }),
       })
       const data = await res.json()
-      if (data.success || data.token) {
-        login(data.patient || data.user, data.token)
+
+      if (data.token) {
+        // data.user = { id, name, email, role } from loginUser controller
+        login(data.user, data.token, 'patient')
         showToast('Login successful!', 'success')
         navigate('/patient-dashboard')
       } else {
@@ -66,8 +70,13 @@ export default function PatientLogin() {
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Email ID</label>
-                <input type="email" placeholder="Enter your email" value={email}
-                  onChange={e => setEmail(e.target.value)} required />
+                <input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                />
               </div>
               <div className="form-group">
                 <label>Password</label>
@@ -84,7 +93,7 @@ export default function PatientLogin() {
                     className={`fa-solid fa-eye${showPw ? '-slash' : ''}`}
                     onClick={() => setShowPw(p => !p)}
                     style={{ position: 'absolute', right: 10, top: 12, cursor: 'pointer' }}
-                  ></i>
+                  />
                 </div>
               </div>
               <div className="form-footer">

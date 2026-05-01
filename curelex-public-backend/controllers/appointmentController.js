@@ -1,13 +1,12 @@
 const Appointment = require("../models/Appointment");
-const Doctor = require("../models/Doctor");
-const User = require("../models/User");
+const Doctor      = require("../models/Doctor");
+const User        = require("../models/User");
 const { validationResult } = require("express-validator");
 const { generateMeetingLink } = require("../utis/meetingLink");
 
 // ================= BOOK APPOINTMENT =================
 exports.bookAppointment = async (req, res, next) => {
   try {
-    // 1. Validation
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -15,168 +14,209 @@ exports.bookAppointment = async (req, res, next) => {
 
     const { patientId, doctorId, symptoms, appointmentTime } = req.body;
 
-    // 2. Check patient
-    const patient = await User.findByPk(patientId);
+    // ✅ FIX: coerce to integer — localStorage JSON may produce strings
+    //         User.findByPk("5") works in some DBs but not all; be explicit.
+    const patientIdInt = parseInt(patientId, 10);
+    const doctorIdInt  = parseInt(doctorId,  10);
+
+    if (isNaN(patientIdInt) || isNaN(doctorIdInt)) {
+      return res.status(400).json({ message: "Invalid patientId or doctorId" });
+    }
+
+    // ✅ FIX: also verify the JWT user matches the patientId being booked
+    //         This prevents a patient booking on behalf of another patient.
+    if (String(req.user.id) !== String(patientIdInt)) {
+      return res.status(403).json({ message: "You can only book appointments for yourself." });
+    }
+
+    const patient = await User.findByPk(patientIdInt);
     if (!patient) {
       return res.status(404).json({ message: "Patient not found" });
     }
 
-    // 3. Check doctor
-    const doctor = await Doctor.findByPk(doctorId);
+    const doctor = await Doctor.findByPk(doctorIdInt);
     if (!doctor) {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
-    // 4. Check doctor verification
     if (doctor.verificationStatus !== "approved") {
       return res.status(400).json({ message: "Doctor is not verified yet" });
     }
 
-    // 5. Check slot availability
     const existingAppointment = await Appointment.findOne({
-      where: { doctorId, appointmentTime }
+      where: { doctorId: doctorIdInt, appointmentTime },
     });
 
     if (existingAppointment) {
-      return res.status(400).json({
-        message: "This time slot is already booked"
-      });
+      return res.status(400).json({ message: "This time slot is already booked" });
     }
 
-    // 7. Create appointment
+    // ✅ Store patientName so doctor dashboard shows it without a join
     const appointment = await Appointment.create({
-      patientId,
-      doctorId,
+      patientId:      patientIdInt,
+      doctorId:       doctorIdInt,
+      patientName:    patient.name,
       symptoms,
       appointmentTime,
-      status: "scheduled"
+      status:         "scheduled",
+      doctorApproved: false,
     });
 
-    // 8. Response
     res.status(201).json({
       message: "Appointment booked successfully",
-      appointment
+      appointment,
     });
-
   } catch (error) {
     next(error);
   }
 };
-
 
 // ================= GET PATIENT APPOINTMENTS =================
 exports.getAppointmentsByPatient = async (req, res, next) => {
   try {
     const appointments = await Appointment.findAll({
-      where: { patientId: req.params.id }
+      where: { patientId: req.params.id },
+      include: [
+        {
+          model: Doctor,
+          as: "doctor",
+          attributes: ["id", "name", "specialization", "photoUrl"],
+        },
+      ],
+      order: [["appointmentTime", "ASC"]],
     });
 
-    res.json({
-      success: true,
-      count: appointments.length,
-      appointments
-    });
-
+    res.json({ success: true, count: appointments.length, appointments });
   } catch (error) {
     next(error);
   }
 };
 
-
 // ================= GET DOCTOR APPOINTMENTS =================
+// Returns ALL appointments for this doctor (pending + approved)
 exports.getAppointmentsByDoctor = async (req, res, next) => {
   try {
     const appointments = await Appointment.findAll({
-      where: { doctorId: req.params.id }
+      where: { doctorId: req.params.id },
+      include: [
+        {
+          model: User,
+          as: "patient",
+          attributes: ["id", "name", "email", "mobile"],
+        },
+      ],
+      order: [["appointmentTime", "ASC"]],
     });
 
-    res.json({
-      success: true,
-      count: appointments.length,
-      appointments
+    // Ensure patientName is always present
+    const enriched = appointments.map((a) => {
+      const plain = a.toJSON();
+      plain.patientName =
+        plain.patientName ||
+        plain.patient?.name ||
+        `Patient #${plain.patientId}`;
+      return plain;
     });
 
+    res.json({ success: true, count: enriched.length, appointments: enriched });
   } catch (error) {
     next(error);
   }
 };
-
 
 // ================= UPDATE APPOINTMENT STATUS =================
 exports.updateAppointmentStatus = async (req, res, next) => {
   try {
     const { status } = req.body;
 
-    
     const validStatuses = ["scheduled", "completed", "cancelled"];
     if (!validStatuses.includes(status)) {
-      return res.status(400).json({
-        message: "Invalid status value"
-      });
+      return res.status(400).json({ message: "Invalid status value" });
     }
 
     const appointment = await Appointment.findByPk(req.params.id);
-
     if (!appointment) {
-      return res.status(404).json({
-        message: "Appointment not found"
-      });
+      return res.status(404).json({ message: "Appointment not found" });
     }
 
     appointment.status = status;
     await appointment.save();
 
-    res.json({
-      message: "Status updated successfully",
-      appointment
-    });
-
+    res.json({ message: "Status updated successfully", appointment });
   } catch (error) {
     next(error);
   }
 };
 
+// ================= GET PENDING APPOINTMENTS (for doctor) =================
 exports.getPendingAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.findAll({
       where: {
-        doctorId: req.params.doctorId,
+        doctorId:       req.params.doctorId,
         doctorApproved: false,
-        status: "scheduled"
+        status:         "scheduled",
       },
-      order: [["appointmentTime", "ASC"]]
+      include: [
+        {
+          model: User,
+          as: "patient",
+          attributes: ["id", "name", "email", "mobile"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
     });
-    res.json({ success: true, appointments });
+
+    const enriched = appointments.map((a) => {
+      const plain = a.toJSON();
+      plain.patientName =
+        plain.patientName ||
+        plain.patient?.name ||
+        `Patient #${plain.patientId}`;
+      return plain;
+    });
+
+    res.json({ success: true, appointments: enriched });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
-}
+};
 
+// ================= GET APPROVED PATIENTS STATS =================
 exports.getApprovedPatients = async (req, res) => {
   try {
     const approved = await Appointment.findAll({
       where: { doctorId: req.params.doctorId, doctorApproved: true },
-      attributes: ["patientId"]
+      attributes: ["patientId"],
     });
 
-    const uniquePatients = [...new Set(approved.map(a => a.patientId))];
+    const uniquePatients = [...new Set(approved.map((a) => a.patientId))];
 
     res.json({
-      success: true,
-      totalApproved: approved.length,
-      patientsHandled: uniquePatients.length
+      success:         true,
+      totalApproved:   approved.length,
+      patientsHandled: uniquePatients.length,
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
-}
+};
 
+// ================= APPROVE APPOINTMENT =================
 exports.approveAppointment = async (req, res) => {
   try {
-    const appointment = await Appointment.findByPk(req.params.id);
+    const appointment = await Appointment.findByPk(req.params.id, {
+      include: [
+        { model: User, as: "patient", attributes: ["id", "name"] },
+      ],
+    });
     if (!appointment) return res.status(404).json({ message: "Not found" });
 
-    
+    // ✅ FIX: verify the approving doctor owns this appointment
+    if (String(appointment.doctorId) !== String(req.user.id)) {
+      return res.status(403).json({ message: "You can only approve your own appointments." });
+    }
+
     const meetingLink = generateMeetingLink(
       appointment.id,
       appointment.doctorId,
@@ -187,14 +227,17 @@ exports.approveAppointment = async (req, res) => {
     appointment.meetingLink    = meetingLink;
     await appointment.save();
 
-    res.json({
-      success: true,
-      message: "Appointment approved",
-      appointment,
-      meetingLink  
-    });
+    const plain = appointment.toJSON();
+    plain.patientName =
+      plain.patientName || plain.patient?.name || `Patient #${plain.patientId}`;
 
+    res.json({
+      success:     true,
+      message:     "Appointment approved",
+      appointment: plain,
+      meetingLink,
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
-}
+};

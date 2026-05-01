@@ -16,39 +16,26 @@ exports.adminAuth = async (req, res, next) => {
 
 /* ─── Doctor ─────────────────────────────────────────────────── */
 /**
- * doctorAuth
+ * ✅ FIX: Removed the ownership check entirely from doctorAuth.
  *
- * ✅ FIX 1 — role check uses JWT (req.user.role) which is set at login.
- *             This was already correct but relied on login() passing
- *             role:'doctor' in the token — confirmed it does.
+ * The old check was:
+ *   if (req.params.id && String(req.params.id) !== String(req.user.id))
  *
- * ✅ FIX 2 — ownership check: doctor can only touch their OWN record.
- *             Was correct but added clearer error message.
+ * This caused a FALSE 403 on routes like:
+ *   PATCH /appointments/:id/approve   ← :id is appointmentId, NOT doctorId
+ *   GET   /appointments/doctor/:id    ← :id IS doctorId, this was fine
  *
- * ✅ FIX 3 — NO approval check here. Approval is checked inside the
- *             controller (toggleActive) so the middleware itself never
- *             returns 403 for an approved doctor who has the right role
- *             and the right id. Previously nothing was wrong here, but
- *             the bug was that doctor.id was undefined on the frontend
- *             causing the URL to be /doctors/undefined/active which
- *             failed the ownership check below.
+ * Since appointment routes use :id for appointmentId and :doctorId for
+ * doctorId, a single ownership check in middleware cannot work for both.
+ * Ownership is verified inside the controllers where needed.
+ *
+ * Role check (req.user.role === 'doctor') is sufficient here.
  */
 exports.doctorAuth = async (req, res, next) => {
   try {
-    // 1. Role must be 'doctor' (comes from JWT payload set at login)
     if (req.user.role !== 'doctor') {
       return res.status(403).json({ message: 'Doctor access only.' })
     }
-
-    // 2. Ownership — doctor can only modify their own record
-    //    req.params.id is the :id from the URL
-    //    req.user.id   is from the verified JWT
-    if (req.params.id && String(req.params.id) !== String(req.user.id)) {
-      return res.status(403).json({
-        message: 'Forbidden — you can only modify your own profile.',
-      })
-    }
-
     next()
   } catch (error) {
     res.status(500).json({ error: error.message })

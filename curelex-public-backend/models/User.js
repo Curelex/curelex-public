@@ -17,9 +17,7 @@ const User = sequelize.define("User", {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
-    validate: {
-      isEmail: true,
-    },
+    validate: { isEmail: true },
   },
 
   password: {
@@ -46,6 +44,7 @@ const User = sequelize.define("User", {
     type: DataTypes.STRING,
     defaultValue: "patient",
   },
+
   address: {
     type: DataTypes.TEXT,
     allowNull: true,
@@ -60,14 +59,15 @@ const User = sequelize.define("User", {
     type: DataTypes.STRING,
     allowNull: true,
     unique: true,
-    validate: {
-      len: [12, 12],
-      isNumeric: true
-    }
+    validate: { len: [12, 12], isNumeric: true },
   },
-
 }, {
   timestamps: true,
 });
+
+// ✅ Association
+User.associate = (models) => {
+  User.hasMany(models.Appointment, { foreignKey: "patientId", as: "appointments" });
+};
 
 module.exports = User;
