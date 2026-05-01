@@ -30,6 +30,197 @@ function calcIncome(appointments, consultationFee = 500) {
   return { todayIncome, totalIncome }
 }
 
+/* ─── Patient Record Viewer Modal ────────────────────────────── */
+function PatientRecordModal({ patientId, patientName, doctorId, token, onClose }) {
+  const [records, setRecords] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchRecords = async () => {
+      setLoading(true)
+      try {
+        const [apptRes, rxRes] = await Promise.all([
+          fetch(`${API}/appointments/doctor/${doctorId}`, { headers: authHeaders(token) }),
+          fetch(`${API}/prescriptions/patient/${patientId}`, { headers: authHeaders(token) }),
+        ])
+        const apptData = await apptRes.json()
+        const rxData   = await rxRes.json()
+
+        const appts = (apptData.appointments || [])
+          .filter(a => a.patientId === patientId && a.doctorApproved)
+          .sort((a, b) => new Date(b.appointmentTime) - new Date(a.appointmentTime))
+
+        const rxList = rxData.prescriptions || []
+
+        const merged = appts.map(a => ({
+          ...a,
+          prescriptions: rxList.filter(rx => rx.appointmentId === a.id),
+        }))
+
+        setRecords(merged)
+      } catch (err) {
+        console.error(err)
+      }
+      setLoading(false)
+    }
+    fetchRecords()
+  }, [patientId, doctorId, token])
+
+  return (
+    <div className="modal active">
+      <div className="modal-overlay" onClick={onClose}></div>
+      <div className="modal-container" style={{ maxWidth: 700, maxHeight: '90vh', overflowY: 'auto' }}>
+        <button className="modal-close" onClick={onClose}>&times;</button>
+        <div className="appointment-modal-header">
+          <i className="fas fa-folder-open"></i>
+          <h2>Patient Records</h2>
+          <p>{patientName || `Patient #${patientId}`} — Full History</p>
+        </div>
+
+        <div style={{ padding: '1rem 1.5rem 1.5rem' }}>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 40 }}>
+              <i className="fas fa-spinner fa-spin" style={{ fontSize: 32, color: '#2563eb' }}></i>
+            </div>
+          ) : records.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
+              <i className="fas fa-folder-open" style={{ fontSize: 36, display: 'block', marginBottom: 12 }}></i>
+              No saved records found for this patient.
+            </div>
+          ) : records.map((appt, i) => (
+            <div key={i} style={{
+              border: '1.5px solid #e5e7eb', borderRadius: 12,
+              marginBottom: 16, overflow: 'hidden',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+            }}>
+              <div style={{
+                background: 'linear-gradient(135deg,#f0f9ff,#e0f2fe)',
+                padding: '12px 16px',
+                borderBottom: '1px solid #bae6fd',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8,
+              }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#0c4a6e' }}>
+                    <i className="fas fa-calendar-check" style={{ marginRight: 8, color: '#0284c7' }}></i>
+                    {formatDate(appt.appointmentTime)} · {formatTime(appt.appointmentTime)}
+                  </div>
+                  {appt.symptoms && (
+                    <div style={{ fontSize: 12, color: '#0369a1', marginTop: 3 }}>
+                      <i className="fas fa-stethoscope" style={{ marginRight: 5 }}></i>
+                      Chief Complaint: {appt.symptoms}
+                    </div>
+                  )}
+                </div>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                  background: '#dcfce7', color: '#16a34a', border: '1px solid #86efac',
+                }}>
+                  ✓ Completed
+                </span>
+              </div>
+
+              <div style={{ padding: '12px 16px' }}>
+                {appt.diagnosis && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+                      <i className="fas fa-notes-medical" style={{ marginRight: 6, color: '#2563eb' }}></i>
+                      Doctor's Diagnosis
+                    </div>
+                    <div style={{ background: '#f8faff', border: '1px solid #dbeafe', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#1e40af' }}>
+                      {appt.diagnosis}
+                    </div>
+                  </div>
+                )}
+
+                {appt.prescriptions && appt.prescriptions.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+                      <i className="fas fa-pills" style={{ marginRight: 6, color: '#7c3aed' }}></i>
+                      Medicines Prescribed
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {appt.prescriptions.flatMap(rx => rx.medicines || []).map((med, mi) => (
+                        <div key={mi} style={{
+                          background: '#faf5ff', border: '1px solid #e9d5ff',
+                          borderRadius: 8, padding: '6px 10px', fontSize: 12,
+                        }}>
+                          <div style={{ fontWeight: 700, color: '#6d28d9' }}>{med.name}</div>
+                          <div style={{ color: '#9ca3af', fontSize: 11 }}>
+                            {med.dosage && <span>{med.dosage} · </span>}
+                            {med.frequency && <span>{med.frequency}</span>}
+                            {med.duration && <span> · {med.duration}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {appt.tests && (() => {
+                  let tests = appt.tests
+                  if (typeof tests === 'string') { try { tests = JSON.parse(tests) } catch { tests = [] } }
+                  return Array.isArray(tests) && tests.length > 0 ? (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+                        <i className="fas fa-flask" style={{ marginRight: 6, color: '#0891b2' }}></i>
+                        Tests Ordered
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {tests.map((t, ti) => (
+                          <span key={ti} style={{
+                            background: '#ecfeff', border: '1px solid #a5f3fc',
+                            borderRadius: 8, padding: '4px 10px', fontSize: 12,
+                            color: '#0e7490', fontWeight: 600,
+                          }}>
+                            {t.name}
+                            <span style={{ fontSize: 10, marginLeft: 5, background: '#cffafe', padding: '1px 5px', borderRadius: 10 }}>
+                              {t.type}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null
+                })()}
+
+                {appt.doctorNotes && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+                      <i className="fas fa-sticky-note" style={{ marginRight: 6, color: '#f59e0b' }}></i>
+                      Clinical Notes
+                    </div>
+                    <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#78350f' }}>
+                      {appt.doctorNotes}
+                    </div>
+                  </div>
+                )}
+
+                {appt.followUpDate && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    <i className="fas fa-calendar-alt" style={{ color: '#10b981', fontSize: 13 }}></i>
+                    <span style={{ fontSize: 12, color: '#065f46', fontWeight: 600 }}>
+                      Follow-up: {formatDate(appt.followUpDate)}
+                    </span>
+                    {appt.followUpInstructions && (
+                      <span style={{ fontSize: 12, color: '#6b7280' }}>— {appt.followUpInstructions}</span>
+                    )}
+                  </div>
+                )}
+
+                {!appt.diagnosis && !appt.doctorNotes && (!appt.prescriptions || appt.prescriptions.length === 0) && (
+                  <div style={{ fontSize: 13, color: '#9ca3af', fontStyle: 'italic' }}>
+                    No detailed record saved for this visit.
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ─── Patient Appointment Card ───────────────────────────────── */
 function PatientAppointmentCard({ appt, index, doctorId, token }) {
   const showToast = useToast()
@@ -38,7 +229,6 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
   const statusClass = diffMin < -30 ? 'completed' : diffMin <= 15 ? 'current' : 'upcoming'
   const statusLabel = { completed: 'Completed', current: 'Now', upcoming: 'Upcoming' }[statusClass]
 
-  // ✅ Show pending badge for unapproved real appointments
   const isPending = !appt.doctorApproved
 
   const [expanded,    setExpanded]    = useState(statusClass === 'current')
@@ -49,11 +239,13 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
   const [tests,       setTests]       = useState([])
   const [testInput,   setTestInput]   = useState('')
   const [testType,    setTestType]    = useState('Pathology')
-  const [description, setDescription] = useState('')
-  const [note,        setNote]        = useState('')
-  const [followUp,    setFollowUp]    = useState('')
+  const [description, setDescription] = useState(appt.diagnosis || '')
+  const [note,        setNote]        = useState(appt.doctorNotes || '')
+  const [followUp,    setFollowUp]    = useState(appt.followUpDate ? appt.followUpDate.split('T')[0] : '')
+  const [followUpInstructions, setFollowUpInstructions] = useState(appt.followUpInstructions || '')
   const [saving,      setSaving]      = useState(false)
   const [approving,   setApproving]   = useState(false)
+  const [saved,       setSaved]       = useState(false)
 
   useEffect(() => {
     if (!expanded) return
@@ -62,6 +254,15 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
       .then(d => setAllMeds(Array.isArray(d) ? d : (d.medicines || [])))
       .catch(() => {})
   }, [expanded])
+
+  useEffect(() => {
+    if (appt.tests) {
+      try {
+        const t = typeof appt.tests === 'string' ? JSON.parse(appt.tests) : appt.tests
+        if (Array.isArray(t)) setTests(t)
+      } catch {}
+    }
+  }, [appt.tests])
 
   const handleMedSearch = (val) => {
     setMedSearch(val)
@@ -90,7 +291,6 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
   }
   const removeTest = (i) => setTests(p => p.filter((_, idx) => idx !== i))
 
-  // ✅ Approve appointment from dashboard
   const handleApprove = async () => {
     setApproving(true)
     try {
@@ -100,7 +300,6 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
       const data = await res.json()
       if (data.success) {
         showToast('Appointment approved ✅', 'success')
-        // Reload page to reflect new state
         window.location.reload()
       } else {
         showToast(data.message || 'Approval failed', 'error')
@@ -113,26 +312,52 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
 
   const handleSave = async () => {
     setSaving(true)
+    setSaved(false)
+    let allOk = true
+
     try {
       if (medicines.length > 0) {
-        await fetch(`${API}/prescriptions/add`, {
-          method: 'POST', headers: authHeaders(token),
+        const rxRes = await fetch(`${API}/prescriptions/add`, {
+          method: 'POST',
+          headers: authHeaders(token),
           body: JSON.stringify({
-            patientId: appt.patientId,
+            patientId:     appt.patientId,
             doctorId,
             appointmentId: appt.id,
             medicines,
             notes: note,
           }),
         })
+        const rxData = await rxRes.json()
+        if (!rxData.success && !rxData.message?.toLowerCase().includes('success')) {
+          allOk = false
+          showToast('Prescription save failed: ' + (rxData.message || 'Unknown error'), 'error')
+        }
       }
-      await fetch(`${API}/appointments/${appt.id}/notes`, {
-        method: 'PATCH', headers: authHeaders(token),
-        body: JSON.stringify({ description, note, followUp, tests }),
-      }).catch(() => {})
-      showToast('Patient record saved ✅', 'success')
-    } catch {
-      showToast('Error saving record', 'error')
+
+      const notesRes = await fetch(`${API}/appointments/${appt.id}/notes`, {
+        method: 'PATCH',
+        headers: authHeaders(token),
+        body: JSON.stringify({
+          description,
+          note,
+          followUp,
+          followUpInstructions,
+          tests,
+        }),
+      })
+      const notesData = await notesRes.json()
+      if (!notesData.success) {
+        allOk = false
+        showToast('Notes save failed: ' + (notesData.message || 'Unknown error'), 'error')
+      }
+
+      if (allOk) {
+        setSaved(true)
+        showToast('Patient record saved ✅ — visible in My Patients', 'success')
+      }
+    } catch (err) {
+      showToast('Error saving record: ' + err.message, 'error')
     }
     setSaving(false)
   }
@@ -154,7 +379,6 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
         ? '0 4px 20px rgba(37,99,235,0.12)'
         : '0 1px 4px rgba(0,0,0,0.06)',
     }}>
-      {/* ── Card Header (click to expand) ── */}
       <div
         style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', cursor: 'pointer', flexWrap: 'wrap' }}
         onClick={() => setExpanded(e => !e)}
@@ -186,7 +410,6 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
               </div>
             </div>
 
-            {/* Status badge */}
             <span style={{
               fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
               background: sc.badgeBg, color: sc.badge, border: `1px solid ${sc.border}`,
@@ -194,7 +417,6 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
               {statusLabel}
             </span>
 
-            {/* ✅ Pending approval badge */}
             {isPending && (
               <span style={{
                 fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
@@ -204,7 +426,15 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
               </span>
             )}
 
-            {/* Video Consultation badge */}
+            {saved && (
+              <span style={{
+                fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                background: '#dcfce7', color: '#16a34a', border: '1px solid #86efac',
+              }}>
+                ✓ Record Saved
+              </span>
+            )}
+
             <span style={{
               fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
               background: '#f0fdf4', color: '#16a34a', border: '1px solid #86efac',
@@ -214,12 +444,10 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
           </div>
         </div>
 
-        {/* Action buttons */}
         <div
           style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}
           onClick={e => e.stopPropagation()}
         >
-          {/* ✅ Approve button for pending appointments */}
           {isPending && (
             <button
               onClick={handleApprove}
@@ -237,7 +465,6 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
             </button>
           )}
 
-          {/* Start Call — only for approved + meeting link */}
           {!isPending && appt.meetingLink && (
             <button
               onClick={() => window.open(appt.meetingLink, '_blank')}
@@ -264,11 +491,8 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
         </div>
       </div>
 
-      {/* ── Expanded Panel ── */}
       {expanded && (
         <div style={{ borderTop: `1px solid ${sc.border}`, background: 'white' }}>
-
-          {/* Patient's Problem */}
           <div style={{ padding: '16px 18px', borderBottom: '1px solid #f3f4f6' }}>
             <div style={{
               fontSize: 11, fontWeight: 700, color: '#6b7280',
@@ -304,9 +528,7 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
             />
           </div>
 
-          {/* Medicine + Tests */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
-            {/* Add Medicine */}
             <div style={{ padding: '16px 18px', borderBottom: '1px solid #f3f4f6', borderRight: '1px solid #f3f4f6' }}>
               <div style={{
                 fontSize: 11, fontWeight: 700, color: '#6b7280',
@@ -393,7 +615,6 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
               </div>
             </div>
 
-            {/* Add Tests */}
             <div style={{ padding: '16px 18px', borderBottom: '1px solid #f3f4f6' }}>
               <div style={{
                 fontSize: 11, fontWeight: 700, color: '#6b7280',
@@ -458,7 +679,6 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
             </div>
           </div>
 
-          {/* Note + Follow Up */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, borderBottom: '1px solid #f3f4f6' }}>
             <div style={{ padding: '14px 18px', borderRight: '1px solid #f3f4f6' }}>
               <div style={{
@@ -496,6 +716,8 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
               />
               <input
                 type="text"
+                value={followUpInstructions}
+                onChange={e => setFollowUpInstructions(e.target.value)}
                 placeholder="Follow-up instructions..."
                 style={{
                   width: '100%', padding: '8px 10px', border: '1px solid #e5e7eb',
@@ -505,7 +727,6 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
             </div>
           </div>
 
-          {/* Footer actions */}
           <div style={{ padding: '14px 18px', display: 'flex', justifyContent: 'flex-end', gap: 10, background: '#fafafa' }}>
             <button
               onClick={() => setExpanded(false)}
@@ -521,10 +742,10 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
               disabled={saving}
               style={{
                 padding: '9px 24px', borderRadius: 8, border: 'none',
-                background: 'linear-gradient(135deg,#2563eb,#7c3aed)',
-                color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                background: saving ? '#94a3b8' : 'linear-gradient(135deg,#2563eb,#7c3aed)',
+                color: 'white', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', gap: 8,
-                opacity: saving ? 0.7 : 1,
+                opacity: saving ? 0.8 : 1,
               }}
             >
               <i className={`fas ${saving ? 'fa-spinner fa-spin' : 'fa-save'}`}></i>
@@ -889,6 +1110,151 @@ function IncomeMiniCards({ todayIncome, totalIncome }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   MY PATIENTS VIEW
+   ═══════════════════════════════════════════════════════════════ */
+function MyPatientsView({ patients, onViewRecords, onPrescribe, onBack }) {
+  return (
+    <div>
+      {/* Header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24,
+        background: 'white', borderRadius: 14, padding: '16px 22px',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0',
+      }}>
+        <button
+          onClick={onBack}
+          style={{
+            background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8,
+            padding: '8px 16px', cursor: 'pointer', fontSize: 13, color: '#374151',
+            fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
+          }}
+        >
+          <i className="fas fa-arrow-left"></i> Back
+        </button>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#111827' }}>
+            <i className="fas fa-user-injured" style={{ marginRight: 10, color: '#2563eb' }}></i>
+            My Patients
+          </h2>
+          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#6b7280' }}>
+            {patients.length} patient{patients.length !== 1 ? 's' : ''} consulted
+          </p>
+        </div>
+      </div>
+
+      {/* Empty state */}
+      {patients.length === 0 ? (
+        <div style={{
+          textAlign: 'center', padding: '64px 24px',
+          background: 'white', borderRadius: 16,
+          border: '1.5px dashed #e5e7eb',
+        }}>
+          <i className="fas fa-user-injured" style={{ fontSize: 48, color: '#d1d5db', display: 'block', marginBottom: 16 }}></i>
+          <h3 style={{ margin: '0 0 8px', color: '#374151' }}>No patients yet</h3>
+          <p style={{ color: '#9ca3af', margin: 0, fontSize: 14 }}>
+            Patients will appear here after you complete appointments and save records.
+          </p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: 14 }}>
+          {patients.map((a, i) => (
+            <div key={i} style={{
+              background: 'white',
+              border: '1.5px solid #e5e7eb',
+              borderRadius: 16,
+              padding: '18px 22px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 16,
+              boxShadow: '0 1px 6px rgba(0,0,0,0.05)',
+              transition: 'box-shadow 0.2s',
+            }}
+              onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(37,99,235,0.1)'}
+              onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 6px rgba(0,0,0,0.05)'}
+            >
+              {/* Avatar */}
+              <div style={{
+                width: 52, height: 52, borderRadius: '50%',
+                background: 'linear-gradient(135deg,#2563eb,#7c3aed)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'white', fontWeight: 800, fontSize: 18, flexShrink: 0,
+              }}>
+                {(a.patientName || 'P').charAt(0).toUpperCase()}
+              </div>
+
+              {/* Info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 4 }}>
+                  {a.patientName || `Patient #${a.patientId}`}
+                </div>
+                <div style={{ fontSize: 12, color: '#6b7280', display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                  <span>
+                    <i className="fas fa-calendar-check" style={{ marginRight: 4, color: '#2563eb' }}></i>
+                    Last visit: {formatDate(a.appointmentTime)}
+                  </span>
+                  {a.symptoms && (
+                    <span>
+                      <i className="fas fa-stethoscope" style={{ marginRight: 4, color: '#7c3aed' }}></i>
+                      {a.symptoms.slice(0, 40)}{a.symptoms.length > 40 ? '…' : ''}
+                    </span>
+                  )}
+                </div>
+                {/* Tags */}
+                <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
+                    background: '#dcfce7', color: '#16a34a', border: '1px solid #86efac',
+                  }}>
+                    ✓ Completed
+                  </span>
+                  {a.diagnosis && (
+                    <span style={{
+                      fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
+                      background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe',
+                    }}>
+                      <i className="fas fa-file-medical" style={{ marginRight: 3 }}></i>
+                      Record Saved
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => onViewRecords(a)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    background: 'linear-gradient(135deg,#eff6ff,#dbeafe)',
+                    color: '#1d4ed8', border: '1.5px solid #bfdbfe',
+                    borderRadius: 8, padding: '8px 14px', fontWeight: 700,
+                    fontSize: 12, cursor: 'pointer',
+                  }}
+                >
+                  <i className="fas fa-folder-open"></i> Records
+                </button>
+                <button
+                  onClick={() => onPrescribe(a)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    background: 'linear-gradient(135deg,#2563eb,#7c3aed)',
+                    color: 'white', border: 'none',
+                    borderRadius: 8, padding: '8px 14px', fontWeight: 700,
+                    fontSize: 12, cursor: 'pointer',
+                  }}
+                >
+                  <i className="fas fa-prescription"></i> Prescribe
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════════ */
 export default function DoctorDashboard() {
@@ -912,6 +1278,7 @@ export default function DoctorDashboard() {
   const [requests,             setRequests]             = useState([])
   const [prescriptionModal,    setPrescriptionModal]    = useState(null)
   const [meetingCard,          setMeetingCard]          = useState(null)
+  const [patientRecordModal,   setPatientRecordModal]   = useState(null)
   const [currentTime,          setCurrentTime]          = useState(new Date())
   const [userDropdown,         setUserDropdown]         = useState(false)
   const [activeNav,            setActiveNav]            = useState('home')
@@ -979,7 +1346,6 @@ export default function DoctorDashboard() {
     }
   }
 
-  // ✅ Loads ALL appointments for this doctor (pending + approved)
   async function loadAllAppointments() {
     if (!doctor?.id) return
     try {
@@ -988,8 +1354,6 @@ export default function DoctorDashboard() {
       if (!mountedRef.current) return
 
       const all = data.appointments || []
-
-      // Income only counts approved
       const approved = all.filter(a => a.doctorApproved === true)
       setAllAppointments(approved)
       const { todayIncome, totalIncome } = calcIncome(approved)
@@ -1000,7 +1364,6 @@ export default function DoctorDashboard() {
 
       setStats(s => ({
         ...s,
-        // ✅ today counts ALL today's appointments (pending + approved)
         today:    all.filter(a => new Date(a.appointmentTime).toDateString() === todayStr).length,
         total:    [...new Set(approved.map(a => a.patientId))].length,
         newMonth: all.filter(a => {
@@ -1009,19 +1372,17 @@ export default function DoctorDashboard() {
         }).length,
       }))
 
-      // ✅ Today's schedule = ALL today's appointments sorted by time
       const todayAppts = all
         .filter(a => new Date(a.appointmentTime).toDateString() === todayStr)
         .sort((a, b) => new Date(a.appointmentTime) - new Date(b.appointmentTime))
 
-      setSchedule(todayAppts)   // ✅ No more DEMO — real data only
+      setSchedule(todayAppts)
 
-      // Recent patients from approved only
       const seen = new Map()
       approved
         .sort((a, b) => new Date(b.appointmentTime) - new Date(a.appointmentTime))
         .forEach(a => { if (!seen.has(a.patientId)) seen.set(a.patientId, a) })
-      setRecentPatients([...seen.values()].slice(0, 5))
+      setRecentPatients([...seen.values()])
 
     } catch (err) {
       console.error(err)
@@ -1035,10 +1396,13 @@ export default function DoctorDashboard() {
       const res  = await fetch(`${API}/prescriptions/doctor/${doctor.id}`, { headers: authHeaders(token) })
       const data = await res.json()
       if (!mountedRef.current) return
-      const all = data.prescriptions || data || []
+      let all = []
+      if (Array.isArray(data))                   all = data
+      else if (Array.isArray(data.prescriptions)) all = data.prescriptions
+      else if (Array.isArray(data.data))          all = data.data
       setPendingPrescriptions(all.filter(p => p.status === 'pending'))
       setStats(s => ({ ...s, prescriptions: all.length }))
-    } catch (err) { console.error(err) }
+    } catch (err) { console.error('loadPrescriptions error:', err) }
   }
 
   async function loadRequests() {
@@ -1139,10 +1503,18 @@ export default function DoctorDashboard() {
                         <button key={item.key}
                           className={`pd-user-dropdown__item${activeNav === item.key ? ' active' : ''}`}
                           onClick={() => {
-                            setActiveNav(item.key)
                             setUserDropdown(false)
-                            if (item.key === 'profile') navigate('/doctor-profile-view')
-                            else showToast(`${item.label} coming soon!`, 'info')
+                            if (item.key === 'profile') {
+                              navigate('/doctor-profile-view')
+                            } else if (item.key === 'patients') {
+                              // ✅ FIX: properly set activeNav to 'patients'
+                              setActiveNav('patients')
+                            } else if (item.key === 'home') {
+                              setActiveNav('home')
+                            } else {
+                              setActiveNav(item.key)
+                              showToast(`${item.label} coming soon!`, 'info')
+                            }
                           }}>
                           <i className={`fas ${item.icon}`}></i> {item.label}
                         </button>
@@ -1164,7 +1536,7 @@ export default function DoctorDashboard() {
         <div className="pd-main" style={{ width: '100%' }}>
           <main className="pd-body">
 
-            {/* Welcome Header */}
+            {/* Welcome Header — always visible */}
             <div style={{
               display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
               background: 'white', borderRadius: 16, padding: '20px 28px',
@@ -1214,7 +1586,18 @@ export default function DoctorDashboard() {
               />
             )}
 
-            {isContentVisible && isActive && (
+            {/* ✅ MY PATIENTS VIEW — shown when activeNav === 'patients' */}
+            {activeNav === 'patients' && isContentVisible && (
+              <MyPatientsView
+                patients={recentPatients}
+                onViewRecords={(a) => setPatientRecordModal({ patientId: a.patientId, patientName: a.patientName })}
+                onPrescribe={(a) => setPrescriptionModal({ patientId: a.patientId, appointmentId: null })}
+                onBack={() => setActiveNav('home')}
+              />
+            )}
+
+            {/* ✅ MAIN DASHBOARD — hidden when My Patients is active */}
+            {activeNav !== 'patients' && isContentVisible && isActive && (
               <PatientIncomingBanner
                 requests={requests}
                 onAccept={id => respondToRequest(id, 'accepted')}
@@ -1222,7 +1605,7 @@ export default function DoctorDashboard() {
               />
             )}
 
-            {isContentVisible && (
+            {activeNav !== 'patients' && isContentVisible && (
               <div className={`dd-content-area${isActive ? '' : ' inactive'}`}>
                 {!isActive && (
                   <div className="dd-closed-badge">
@@ -1257,7 +1640,7 @@ export default function DoctorDashboard() {
 
                 <div className="dashboard-grid">
 
-                  {/* ✅ Today's Schedule — real appointments */}
+                  {/* Today's Schedule */}
                   <div className="dashboard-card full-width">
                     <div className="card-header">
                       <i className="fas fa-calendar-day"></i>
@@ -1298,26 +1681,40 @@ export default function DoctorDashboard() {
                     <div className="card-body">
                       <div className="patients-list">
                         {recentPatients.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No patients yet.</p>}
-                        {recentPatients.map((a, i) => (
+                        {recentPatients.slice(0, 5).map((a, i) => (
                           <div className="patient-item" key={i}>
                             <div className="patient-avatar"><i className="fas fa-user"></i></div>
                             <div className="patient-info">
                               <h4>{a.patientName || `Patient #${a.patientId}`}</h4>
                               <p>Last: {formatDate(a.appointmentTime)}</p>
                             </div>
-                            <button
-                              className="btn btn-outline btn-sm"
-                              onClick={() => setPrescriptionModal({ patientId: a.patientId, appointmentId: null })}
-                            >
-                              Prescribe
-                            </button>
+                            <div style={{ display: 'flex', gap: 6, flexDirection: 'column' }}>
+                              <button
+                                className="btn btn-outline btn-sm"
+                                style={{ fontSize: 11, padding: '4px 10px' }}
+                                onClick={() => setPatientRecordModal({
+                                  patientId: a.patientId,
+                                  patientName: a.patientName,
+                                })}
+                              >
+                                <i className="fas fa-folder-open" style={{ marginRight: 4 }}></i>Records
+                              </button>
+                              <button
+                                className="btn btn-outline btn-sm"
+                                style={{ fontSize: 11, padding: '4px 10px' }}
+                                onClick={() => setPrescriptionModal({ patientId: a.patientId, appointmentId: null })}
+                              >
+                                Prescribe
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
+                      {/* ✅ "View All Patients" now correctly navigates to patients view */}
                       <button
                         className="btn btn-primary btn-full"
                         style={{ marginTop: '1rem' }}
-                        onClick={() => showToast('All patients view coming soon!', 'info')}
+                        onClick={() => setActiveNav('patients')}
                       >
                         <i className="fas fa-users"></i> View All Patients
                       </button>
@@ -1418,6 +1815,17 @@ export default function DoctorDashboard() {
           </main>
         </div>
       </div>
+
+      {/* Patient Record Modal */}
+      {patientRecordModal && (
+        <PatientRecordModal
+          patientId={patientRecordModal.patientId}
+          patientName={patientRecordModal.patientName}
+          doctorId={doctor.id}
+          token={token}
+          onClose={() => setPatientRecordModal(null)}
+        />
+      )}
 
       {prescriptionModal && (
         <PrescriptionModal

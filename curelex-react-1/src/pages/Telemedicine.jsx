@@ -226,7 +226,7 @@ export default function TelemedicinePage() {
     const appointmentTime = new Date(Date.now() + 15 * 60 * 1000).toISOString()
 
     try {
-      const res = await fetch(`${API}/appointments/book`, {
+      const res = await fetch(`${API}/appointments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

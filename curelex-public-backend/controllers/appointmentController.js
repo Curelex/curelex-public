@@ -14,8 +14,6 @@ exports.bookAppointment = async (req, res, next) => {
 
     const { patientId, doctorId, symptoms, appointmentTime } = req.body;
 
-    // ✅ FIX: coerce to integer — localStorage JSON may produce strings
-    //         User.findByPk("5") works in some DBs but not all; be explicit.
     const patientIdInt = parseInt(patientId, 10);
     const doctorIdInt  = parseInt(doctorId,  10);
 
@@ -23,8 +21,6 @@ exports.bookAppointment = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid patientId or doctorId" });
     }
 
-    // ✅ FIX: also verify the JWT user matches the patientId being booked
-    //         This prevents a patient booking on behalf of another patient.
     if (String(req.user.id) !== String(patientIdInt)) {
       return res.status(403).json({ message: "You can only book appointments for yourself." });
     }
@@ -51,7 +47,6 @@ exports.bookAppointment = async (req, res, next) => {
       return res.status(400).json({ message: "This time slot is already booked" });
     }
 
-    // ✅ Store patientName so doctor dashboard shows it without a join
     const appointment = await Appointment.create({
       patientId:      patientIdInt,
       doctorId:       doctorIdInt,
@@ -93,7 +88,6 @@ exports.getAppointmentsByPatient = async (req, res, next) => {
 };
 
 // ================= GET DOCTOR APPOINTMENTS =================
-// Returns ALL appointments for this doctor (pending + approved)
 exports.getAppointmentsByDoctor = async (req, res, next) => {
   try {
     const appointments = await Appointment.findAll({
@@ -108,7 +102,6 @@ exports.getAppointmentsByDoctor = async (req, res, next) => {
       order: [["appointmentTime", "ASC"]],
     });
 
-    // Ensure patientName is always present
     const enriched = appointments.map((a) => {
       const plain = a.toJSON();
       plain.patientName =
@@ -212,7 +205,6 @@ exports.approveAppointment = async (req, res) => {
     });
     if (!appointment) return res.status(404).json({ message: "Not found" });
 
-    // ✅ FIX: verify the approving doctor owns this appointment
     if (String(appointment.doctorId) !== String(req.user.id)) {
       return res.status(403).json({ message: "You can only approve your own appointments." });
     }
@@ -239,5 +231,31 @@ exports.approveAppointment = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ================= SAVE APPOINTMENT NOTES =================
+// PATCH /appointments/:id/notes
+exports.saveAppointmentNotes = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { description, note, followUp, tests, followUpInstructions } = req.body;
+
+    const appointment = await Appointment.findByPk(id);
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: "Appointment not found" });
+    }
+
+    await appointment.update({
+      diagnosis:            description    || null,
+      doctorNotes:          note           || null,
+      followUpDate:         followUp       || null,
+      followUpInstructions: followUpInstructions || null,
+      tests:                tests && tests.length > 0 ? JSON.stringify(tests) : null,
+    });
+
+    res.json({ success: true, message: "Appointment notes saved", appointment });
+  } catch (error) {
+    next(error);
   }
 };

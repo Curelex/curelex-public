@@ -362,29 +362,59 @@ export default function PatientDashboard() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  // ✅ CHANGE 1: loadAppointments — counts unique doctors from ALL approved appointments
   async function loadAppointments() {
     try {
       const res  = await fetch(`${API}/appointments/patient/${currentUser.id}`, { headers: authHeaders(token) })
       const data = await res.json()
       if (!data.success || !data.appointments?.length) return
-      const all           = data.appointments
-      const now           = new Date()
-      const approved      = all.filter(a =>  a.doctorApproved && new Date(a.appointmentTime) > now && a.status === 'scheduled')
-      const pending       = all.filter(a => !a.doctorApproved && new Date(a.appointmentTime) > now && a.status === 'scheduled')
-      const expired       = all.filter(a => !a.doctorApproved && new Date(a.appointmentTime) <= now)
-      const uniqueDoctors = [...new Set(all.filter(a => a.doctorApproved).map(a => a.doctorId))].length
+
+      const all      = data.appointments
+      const now      = new Date()
+
+      const approved = all.filter(a =>  a.doctorApproved && new Date(a.appointmentTime) > now && a.status === 'scheduled')
+      const pending  = all.filter(a => !a.doctorApproved && new Date(a.appointmentTime) > now && a.status === 'scheduled')
+      const expired  = all.filter(a => !a.doctorApproved && new Date(a.appointmentTime) <= now)
+
+      // ✅ Count unique doctors from ALL approved appointments (not just upcoming)
+      const allApproved   = all.filter(a => a.doctorApproved)
+      const uniqueDoctors = [...new Set(allApproved.map(a => a.doctorId))].length
+
       setStats(s => ({ ...s, upcoming: approved.length, total: all.length, doctors: uniqueDoctors }))
       setAppointments({ approved, pending, expired })
     } catch (err) { console.error(err) }
   }
 
+  // ✅ CHANGE 2: loadPrescriptions — merges appointment data (diagnosis, tests, followUpDate) into each prescription
   async function loadPrescriptions() {
     try {
-      const res  = await fetch(`${API}/prescriptions/patient/${currentUser.id}`, { headers: authHeaders(token) })
-      const data = await res.json()
-      if (data.success && data.prescriptions?.length) {
-        setPrescriptions(data.prescriptions)
-        setStats(s => ({ ...s, prescriptions: data.prescriptions.length }))
+      const [rxRes, apptRes] = await Promise.all([
+        fetch(`${API}/prescriptions/patient/${currentUser.id}`, { headers: authHeaders(token) }),
+        fetch(`${API}/appointments/patient/${currentUser.id}`, { headers: authHeaders(token) }),
+      ])
+      const rxData   = await rxRes.json()
+      const apptData = await apptRes.json()
+
+      if (rxData.success && rxData.prescriptions?.length) {
+        const allAppts = apptData.appointments || []
+
+        // ✅ Merge diagnosis/tests/followUp from the linked appointment into each prescription
+        const enriched = rxData.prescriptions.map(rx => {
+          const linkedAppt = allAppts.find(a => a.id === rx.appointmentId)
+          return {
+            ...rx,
+            diagnosis:            linkedAppt?.diagnosis            || null,
+            tests:                linkedAppt?.tests                || null,
+            followUpDate:         linkedAppt?.followUpDate         || null,
+            followUpInstructions: linkedAppt?.followUpInstructions || null,
+            // doctor name from appointment's included doctor object
+            doctorName: rx.doctorName || linkedAppt?.doctor?.name || null,
+            department:  rx.department || linkedAppt?.doctor?.specialization || null,
+          }
+        })
+
+        setPrescriptions(enriched)
+        setStats(s => ({ ...s, prescriptions: enriched.length }))
       }
     } catch (err) { console.error(err) }
   }
@@ -619,6 +649,8 @@ export default function PatientDashboard() {
                   {!appointments.approved.length && !appointments.pending.length && (
                     <div className="pd-empty"><i className="fas fa-calendar-times"></i> No upcoming appointments</div>
                   )}
+
+                  {/* ✅ CHANGE 3: Approved appointments render block — shows doctor name, follow-up, and diagnosis */}
                   {appointments.approved.map((apt, i) => {
                     const d             = new Date(apt.appointmentTime)
                     const diffMin       = (d - now) / 60000
@@ -631,19 +663,45 @@ export default function PatientDashboard() {
                         </div>
                         <div className="pd-appt-info">
                           <h4>Confirmed Appointment</h4>
-                          <p>Dr. #{apt.doctorId} · {formatTime(apt.appointmentTime)}</p>
+                          {/* ✅ Doctor name with specialization */}
+                          <p>
+                            {apt.doctor?.name ? `Dr. ${apt.doctor.name}` : `Dr. #${apt.doctorId}`}
+                            {apt.doctor?.specialization ? ` · ${apt.doctor.specialization}` : ''}
+                            {' · '}{formatTime(apt.appointmentTime)}
+                          </p>
                           <span className="badge badge--green">✅ Approved</span>
+
+                          {/* ✅ Show follow-up if set by doctor */}
+                          {apt.followUpDate && (
+                            <p style={{ fontSize: 11, color: '#10b981', marginTop: 4, fontWeight: 600 }}>
+                              <i className="fas fa-calendar-alt" style={{ marginRight: 4 }}></i>
+                              Follow-up: {formatDate(apt.followUpDate)}
+                              {apt.followUpInstructions && ` — ${apt.followUpInstructions}`}
+                            </p>
+                          )}
+
+                          {/* ✅ Show diagnosis if doctor saved it */}
+                          {apt.diagnosis && (
+                            <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                              <i className="fas fa-stethoscope" style={{ marginRight: 4, color: '#2563eb' }}></i>
+                              {apt.diagnosis}
+                            </p>
+                          )}
+
                           {joinAvailable ? (
                             <a href={apt.meetingLink} target="_blank" rel="noopener noreferrer" className="pd-video-link">
                               <i className="fas fa-video"></i> Join Video Call
                             </a>
                           ) : apt.meetingLink ? (
-                            <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 6 }}>Video link ready · available 30 min before</p>
+                            <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 6 }}>
+                              Video link ready · available 30 min before
+                            </p>
                           ) : null}
                         </div>
                       </div>
                     )
                   })}
+
                   {appointments.pending.map((apt, i) => {
                     const d = new Date(apt.appointmentTime)
                     return (

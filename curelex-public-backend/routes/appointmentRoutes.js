@@ -1,9 +1,7 @@
-const express  = require("express");
-const router   = express.Router();
+const express = require("express");
+const router  = express.Router();
 const { body } = require("express-validator");
-
-
-
+const auth = require("../middleware/auth");   // ✅ correct import
 
 const {
   bookAppointment,
@@ -12,45 +10,41 @@ const {
   updateAppointmentStatus,
   getPendingAppointments,
   getApprovedPatients,
-  approveAppointment
+  approveAppointment,
+  saveAppointmentNotes,
 } = require("../controllers/appointmentController");
 
-
-const auth = require("../middleware/auth");
-const { patientAuth, doctorOrAdminAuth, doctorAuth } = require("../middleware/role.middleware");
-
-
-// ── Book appointment ──────────────────────────────────────────────────────────
+// Book
 router.post(
-  "/book",
+  "/",
   auth,
   [
-    body("patientId").notEmpty().withMessage("Patient ID is required"),
-    body("doctorId").notEmpty().withMessage("Doctor ID is required"),
-    body("appointmentTime")
-      .notEmpty().withMessage("Appointment time is required")
-      .isISO8601().withMessage("Invalid date format"),
-    body("symptoms").optional().isString()
+    body("patientId").notEmpty(),
+    body("doctorId").notEmpty(),
+    body("appointmentTime").notEmpty(),
   ],
   bookAppointment
 );
 
-// ── Get by patient ────────────────────────────────────────────────────────────
-router.get("/patient/:id", auth, patientAuth, getAppointmentsByPatient);
+// Patient's appointments
+router.get("/patient/:id", auth, getAppointmentsByPatient);
 
-// ── Get by doctor ─────────────────────────────────────────────────────────────
-router.get("/doctor/:id", auth, doctorAuth, getAppointmentsByDoctor);
+// Doctor's appointments (all)
+router.get("/doctor/:id", auth, getAppointmentsByDoctor);
 
-// ── Update status ─────────────────────────────────────────────────────────────
-router.put("/status/:id", auth, doctorOrAdminAuth, updateAppointmentStatus);
-
-
+// Doctor's pending appointments
 router.get("/doctor/:doctorId/pending", auth, getPendingAppointments);
 
-// ── Doctor stats: approved count + unique patients handled ───────────────────
-router.get("/doctor/:doctorId/stats", auth, getApprovedPatients);
+// Doctor's approved patients stats
+router.get("/doctor/:doctorId/approved", auth, getApprovedPatients);
 
-// ── Approve a single appointment ──────────────────────────────────────────────
-router.patch("/:id/approve", auth, doctorAuth, approveAppointment);
+// Update status
+router.put("/status/:id", auth, updateAppointmentStatus);
+
+// Approve appointment
+router.patch("/:id/approve", auth, approveAppointment);
+
+// ✅ Save doctor notes / diagnosis / tests / follow-up
+router.patch("/:id/notes", auth, saveAppointmentNotes);
 
 module.exports = router;

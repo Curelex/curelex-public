@@ -5,7 +5,7 @@ const { body } = require("express-validator");
 const {
   addPrescription,
   getPrescriptionsByPatient,
-  getPrescriptionsByDoctor
+  getPrescriptionsByDoctor,
 } = require("../controllers/prescriptionController");
 
 router.post(
@@ -15,8 +15,7 @@ router.post(
     body("doctorId").notEmpty().withMessage("Doctor ID is required"),
     body("medicines").isArray({ min: 1 }).withMessage("Medicines array is required"),
     body("medicines.*.name").notEmpty().withMessage("Medicine name required"),
-    body("medicines.*.dosage").notEmpty().withMessage("Dosage required"),
-    body("medicines.*.duration").notEmpty().withMessage("Duration required")
+    // dosage & duration optional — doctor may not fill both always
   ],
   addPrescription
 );
