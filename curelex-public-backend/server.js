@@ -12,6 +12,7 @@ const sequelize = require("./config/mysql");
 const User        = require("./models/User");
 const Doctor      = require("./models/Doctor");
 const Appointment = require("./models/Appointment");
+const Test        = require("./models/Test");
 
 // ================= ASSOCIATIONS =================
 // ✅ Must be defined here, after all models are loaded,
@@ -29,7 +30,7 @@ const appointmentRoutes  = require("./routes/appointmentRoutes");
 const prescriptionRoutes = require("./routes/prescriptionRoutes");
 const medicineRoutes     = require("./routes/medicineRoutes");
 const dashboardRoutes    = require("./routes/dashboardRoutes");
-
+const testRoutes = require("./routes/testRoutes");
 // ================= MIDDLEWARE =================
 const errorHandler = require("./middleware/errorHandler");
 
@@ -61,6 +62,7 @@ app.use("/api/appointments",  appointmentRoutes);
 app.use("/api/prescriptions", prescriptionRoutes);
 app.use("/api/medicines",     medicineRoutes);
 app.use("/api/dashboard",     dashboardRoutes);
+app.use("/api/tests", testRoutes);
 
 // Docs
 app.get("/docs", (req, res) => {

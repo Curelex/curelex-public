@@ -14,7 +14,8 @@ const NAV_ITEMS = [
   { icon: 'fa-file-medical-alt',        label: 'Medical Reports',      key: 'reports'      },
   { icon: 'fa-chart-bar',               label: 'Analytics',            key: 'analytics'    },
   { icon: 'fa-comment-dots',            label: 'Feedback',             key: 'feedback'     },
-  { icon: 'fa-pills',                   label: 'My Medicines',         key: 'medicines'    }, // ✅ NEW
+  { icon: 'fa-pills',                   label: 'My Medicines',         key: 'medicines'    },
+  { icon: 'fa-flask',                   label: 'My Tests',             key: 'mytests'      },
   { divider: true },
   { icon: 'fa-user-circle',             label: 'View / Update Profile',key: 'profile'      },
   { icon: 'fa-cog',                     label: 'Settings',             key: 'settings'     },
@@ -237,9 +238,14 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
   const [medSearch,   setMedSearch]   = useState('')
   const [medDropdown, setMedDropdown] = useState([])
   const [allMeds,     setAllMeds]     = useState([])
+
+  // ── Tests state ──
   const [tests,       setTests]       = useState([])
   const [testInput,   setTestInput]   = useState('')
   const [testType,    setTestType]    = useState('Pathology')
+  const [testDropdown, setTestDropdown] = useState([])
+  const [allMyTests,  setAllMyTests]  = useState([])
+
   const [description, setDescription] = useState(appt.diagnosis || '')
   const [note,        setNote]        = useState(appt.doctorNotes || '')
   const [followUp,    setFollowUp]    = useState(appt.followUpDate ? appt.followUpDate.split('T')[0] : '')
@@ -248,14 +254,25 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
   const [approving,   setApproving]   = useState(false)
   const [saved,       setSaved]       = useState(false)
 
-  // ✅ FIXED: fetch doctor-specific medicines (own + global)
-  useEffect(() => {
-    if (!expanded) return
+  const refreshAllMeds = () => {
     fetch(`${API}/medicines/doctor/${doctorId}`, { headers: authHeaders(token) })
       .then(r => r.json())
       .then(d => setAllMeds(Array.isArray(d) ? d : (d.medicines || [])))
       .catch(() => {})
-  }, [expanded])
+  }
+
+  const refreshAllMyTests = () => {
+    fetch(`${API}/tests/doctor/${doctorId}`, { headers: authHeaders(token) })
+      .then(r => r.json())
+      .then(d => setAllMyTests(Array.isArray(d) ? d : (d.tests || [])))
+      .catch(() => {})
+  }
+
+  useEffect(() => {
+    if (!expanded) return
+    refreshAllMeds()
+    refreshAllMyTests()
+  }, [expanded]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (appt.tests) {
@@ -284,14 +301,81 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
     setMedSearch(''); setMedDropdown([])
   }
 
+  const saveAndAddMedicine = async (name) => {
+    if (!name.trim()) return
+    try {
+      const res  = await fetch(`${API}/medicines/doctor/add`, {
+        method: 'POST',
+        headers: authHeaders(token),
+        body: JSON.stringify({ name: name.trim(), composition: '', dosageForm: 'Tablet', doctorId }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        showToast(`"${name}" saved to My Medicines ✅`, 'success')
+        refreshAllMeds()
+        addMedicine(name)
+      } else {
+        showToast(data.message || 'Could not save medicine', 'error')
+      }
+    } catch {
+      showToast('Server error while saving medicine', 'error')
+    }
+  }
+
+  // ── Test search & save helpers ──
+  const handleTestSearch = (val) => {
+    setTestInput(val)
+    if (!val.trim()) { setTestDropdown([]); return }
+    const needle = val.toLowerCase()
+    setTestDropdown(
+      allMyTests.filter(t =>
+        (t.name || '').toLowerCase().includes(needle)
+      ).slice(0, 6)
+    )
+  }
+
+  const addTestFromDropdown = (testItem) => {
+    const exists = tests.find(t => t.name.toLowerCase() === testItem.name.toLowerCase())
+    if (exists) { showToast(`${testItem.name} already added`, 'info'); return }
+    setTests(p => [...p, { name: testItem.name, type: testItem.category || testType }])
+    setTestInput(''); setTestDropdown([])
+  }
+
+  const saveAndAddTest = async (name) => {
+    if (!name.trim()) return
+    try {
+      const res  = await fetch(`${API}/tests/doctor/add`, {
+        method: 'POST',
+        headers: authHeaders(token),
+        body: JSON.stringify({ name: name.trim(), category: testType, doctorId }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        showToast(`"${name}" saved to My Tests ✅`, 'success')
+        refreshAllMyTests()
+        const exists = tests.find(t => t.name.toLowerCase() === name.toLowerCase())
+        if (!exists) setTests(p => [...p, { name: name.trim(), type: testType }])
+        setTestInput(''); setTestDropdown([])
+      } else {
+        showToast(data.message || 'Could not save test', 'error')
+      }
+    } catch {
+      showToast('Server error while saving test', 'error')
+    }
+  }
+
+  const addTestManual = () => {
+    if (!testInput.trim()) return
+    const exists = tests.find(t => t.name.toLowerCase() === testInput.trim().toLowerCase())
+    if (exists) { showToast(`${testInput.trim()} already added`, 'info'); return }
+    setTests(p => [...p, { name: testInput.trim(), type: testType }])
+    setTestInput(''); setTestDropdown([])
+  }
+
+  const removeTest = (i) => setTests(p => p.filter((_, idx) => idx !== i))
+
   const updateMed  = (i, field, val) => setMedicines(p => p.map((m, idx) => idx === i ? { ...m, [field]: val } : m))
   const removeMed  = (i) => setMedicines(p => p.filter((_, idx) => idx !== i))
-  const addTest    = () => {
-    if (!testInput.trim()) return
-    setTests(p => [...p, { name: testInput.trim(), type: testType }])
-    setTestInput('')
-  }
-  const removeTest = (i) => setTests(p => p.filter((_, idx) => idx !== i))
 
   const handleApprove = async () => {
     setApproving(true)
@@ -369,6 +453,14 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
     current:   { bg: '#eff6ff', border: '#93c5fd', badge: '#1d4ed8', badgeBg: '#dbeafe' },
     upcoming:  { bg: '#fafafa', border: '#e5e7eb', badge: '#6b7280', badgeBg: '#f3f4f6' },
   }[statusClass]
+
+  const hasExactMedMatch = allMeds.some(
+    m => m.name.toLowerCase() === medSearch.trim().toLowerCase()
+  )
+
+  const hasExactTestMatch = allMyTests.some(
+    t => t.name.toLowerCase() === testInput.trim().toLowerCase()
+  )
 
   return (
     <div style={{
@@ -531,6 +623,7 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
+            {/* ── Medicine column ── */}
             <div style={{ padding: '16px 18px', borderBottom: '1px solid #f3f4f6', borderRight: '1px solid #f3f4f6' }}>
               <div style={{
                 fontSize: 11, fontWeight: 700, color: '#6b7280',
@@ -543,17 +636,17 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
                   type="text"
                   value={medSearch}
                   onChange={e => handleMedSearch(e.target.value)}
-                  placeholder="Search medicine..."
+                  placeholder="Search or type medicine name..."
                   style={{
                     width: '100%', padding: '7px 12px', border: '1px solid #e5e7eb',
                     borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none',
                   }}
                 />
-                {medDropdown.length > 0 && (
+                {(medDropdown.length > 0 || (medSearch.trim() && !hasExactMedMatch)) && (
                   <div style={{
                     position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
                     border: '1px solid #e5e7eb', borderRadius: 8, background: 'white',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.1)', maxHeight: 140, overflowY: 'auto',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.1)', maxHeight: 200, overflowY: 'auto',
                   }}>
                     {medDropdown.map(m => (
                       <div
@@ -571,9 +664,26 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
                         )}
                       </div>
                     ))}
+                    {medSearch.trim() && !hasExactMedMatch && (
+                      <div
+                        onClick={() => saveAndAddMedicine(medSearch.trim())}
+                        style={{
+                          padding: '9px 12px', cursor: 'pointer', fontSize: 13,
+                          color: '#7c3aed', fontWeight: 700, background: '#faf5ff',
+                          borderTop: medDropdown.length > 0 ? '1px dashed #e9d5ff' : 'none',
+                          display: 'flex', alignItems: 'center', gap: 8,
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#ede9fe'}
+                        onMouseLeave={e => e.currentTarget.style.background = '#faf5ff'}
+                      >
+                        <i className="fas fa-plus-circle" style={{ color: '#7c3aed', fontSize: 14 }}></i>
+                        <span>Add &amp; save <strong>"{medSearch.trim()}"</strong> to My Medicines</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
+
               <div style={{ marginTop: 8 }}>
                 {medicines.length === 0 && (
                   <p style={{ fontSize: 12, color: '#9ca3af', margin: '4px 0' }}>
@@ -622,6 +732,7 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
               </div>
             </div>
 
+            {/* ── Tests column ── */}
             <div style={{ padding: '16px 18px', borderBottom: '1px solid #f3f4f6' }}>
               <div style={{
                 fontSize: 11, fontWeight: 700, color: '#6b7280',
@@ -641,16 +752,67 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
                   <option>Cardiology</option>
                   <option>Other</option>
                 </select>
-                <input
-                  value={testInput}
-                  onChange={e => setTestInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && addTest()}
-                  placeholder="Test name... (Enter to add)"
-                  style={{ flex: 1, padding: '7px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none' }}
-                />
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <input
+                    value={testInput}
+                    onChange={e => handleTestSearch(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        if (testInput.trim()) addTestManual()
+                      }
+                    }}
+                    placeholder="Search or type test name..."
+                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                  />
+                  {/* Test dropdown */}
+                  {(testDropdown.length > 0 || (testInput.trim() && !hasExactTestMatch)) && (
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                      border: '1px solid #e5e7eb', borderRadius: 8, background: 'white',
+                      boxShadow: '0 4px 16px rgba(0,0,0,0.1)', maxHeight: 200, overflowY: 'auto',
+                    }}>
+                      {testDropdown.map((t, ti) => (
+                        <div
+                          key={ti}
+                          onClick={() => addTestFromDropdown(t)}
+                          style={{ padding: '7px 12px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #f3f4f6', color: '#374151' }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#ecfeff'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'white'}
+                        >
+                          {t.name}
+                          {t.doctorId && (
+                            <span style={{ marginLeft: 6, fontSize: 10, background: '#cffafe', color: '#0e7490', padding: '1px 6px', borderRadius: 10 }}>
+                              My Test
+                            </span>
+                          )}
+                          {t.category && (
+                            <span style={{ marginLeft: 4, fontSize: 10, color: '#6b7280' }}>· {t.category}</span>
+                          )}
+                        </div>
+                      ))}
+                      {/* Save to My Tests option */}
+                      {testInput.trim() && !hasExactTestMatch && (
+                        <div
+                          onClick={() => saveAndAddTest(testInput.trim())}
+                          style={{
+                            padding: '9px 12px', cursor: 'pointer', fontSize: 13,
+                            color: '#0891b2', fontWeight: 700, background: '#ecfeff',
+                            borderTop: testDropdown.length > 0 ? '1px dashed #a5f3fc' : 'none',
+                            display: 'flex', alignItems: 'center', gap: 8,
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#cffafe'}
+                          onMouseLeave={e => e.currentTarget.style.background = '#ecfeff'}
+                        >
+                          <i className="fas fa-plus-circle" style={{ color: '#0891b2', fontSize: 14 }}></i>
+                          <span>Add &amp; save <strong>"{testInput.trim()}"</strong> to My Tests</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <button
-                  onClick={addTest}
-                  style={{ background: '#0891b2', color: 'white', border: 'none', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', fontSize: 13 }}
+                  onClick={addTestManual}
+                  style={{ background: '#0891b2', color: 'white', border: 'none', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', fontSize: 13, flexShrink: 0 }}
                 >
                   <i className="fas fa-plus"></i>
                 </button>
@@ -658,7 +820,7 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
               <div>
                 {tests.length === 0 && (
                   <p style={{ fontSize: 12, color: '#9ca3af', margin: '4px 0' }}>
-                    No tests added yet — type name & press Enter
+                    No tests added yet — search or type & press Enter
                   </p>
                 )}
                 {tests.map((t, i) => (
@@ -774,13 +936,14 @@ function PrescriptionModal({ patientId, doctorId, token, onClose, onSuccess }) {
   const [notes,        setNotes]        = useState('')
   const showToast = useToast()
 
-  // ✅ FIXED: fetch doctor-specific medicines (own + global)
-  useEffect(() => {
+  const refreshMeds = () => {
     fetch(`${API}/medicines/doctor/${doctorId}`, { headers: authHeaders(token) })
       .then(r => r.json())
       .then(d => setAllMedicines(Array.isArray(d) ? d : (d.medicines || [])))
       .catch(() => {})
-  }, [])
+  }
+
+  useEffect(() => { refreshMeds() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = (val) => {
     setSearch(val)
@@ -798,8 +961,33 @@ function PrescriptionModal({ patientId, doctorId, token, onClose, onSuccess }) {
     setSearch(''); setDropdown([])
   }
 
+  const saveAndSelectMedicine = async (name) => {
+    if (!name.trim()) return
+    try {
+      const res  = await fetch(`${API}/medicines/doctor/add`, {
+        method: 'POST',
+        headers: authHeaders(token),
+        body: JSON.stringify({ name: name.trim(), composition: '', dosageForm: 'Tablet', doctorId }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        showToast(`"${name}" saved to My Medicines ✅`, 'success')
+        refreshMeds()
+        selectMedicine(name)
+      } else {
+        showToast(data.message || 'Could not save medicine', 'error')
+      }
+    } catch {
+      showToast('Server error while saving medicine', 'error')
+    }
+  }
+
   const updateField = (i, field, val) => setSelected(s => s.map((m, idx) => idx === i ? { ...m, [field]: val } : m))
   const remove      = (i) => setSelected(s => s.filter((_, idx) => idx !== i))
+
+  const hasExactMatch = allMedicines.some(
+    m => m.name.toLowerCase() === search.trim().toLowerCase()
+  )
 
   const submit = async () => {
     if (!selected.length) { showToast('Add at least one medicine', 'error'); return }
@@ -831,10 +1019,14 @@ function PrescriptionModal({ patientId, doctorId, token, onClose, onSuccess }) {
           <label>Search Medicine</label>
           <input type="text" placeholder="Type medicine name..." value={search} onChange={e => handleSearch(e.target.value)}
             style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, margin: '6px 0' }} />
-          {dropdown.length > 0 && (
-            <div style={{ border: '1px solid var(--border)', borderRadius: 8, maxHeight: 160, overflowY: 'auto', background: 'var(--card-bg)' }}>
+
+          {(dropdown.length > 0 || (search.trim() && !hasExactMatch)) && (
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, maxHeight: 200, overflowY: 'auto', background: 'var(--card-bg)' }}>
               {dropdown.map(m => (
-                <div key={m.name} onClick={() => selectMedicine(m.name)} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}>
+                <div key={m.name} onClick={() => selectMedicine(m.name)} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#f8faff'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
                   <strong>{m.name}</strong>
                   {m.doctorId && (
                     <span style={{ marginLeft: 6, fontSize: 10, background: '#ede9fe', color: '#7c3aed', padding: '1px 6px', borderRadius: 10 }}>
@@ -844,8 +1036,25 @@ function PrescriptionModal({ patientId, doctorId, token, onClose, onSuccess }) {
                   <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}> · {m.dosageForm || ''}</span>
                 </div>
               ))}
+              {search.trim() && !hasExactMatch && (
+                <div
+                  onClick={() => saveAndSelectMedicine(search.trim())}
+                  style={{
+                    padding: '9px 12px', cursor: 'pointer', fontSize: 13,
+                    color: '#7c3aed', fontWeight: 700, background: '#faf5ff',
+                    borderTop: dropdown.length > 0 ? '1px dashed #e9d5ff' : 'none',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#ede9fe'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#faf5ff'}
+                >
+                  <i className="fas fa-plus-circle" style={{ fontSize: 14 }}></i>
+                  <span>Add &amp; save <strong>"{search.trim()}"</strong> to My Medicines</span>
+                </div>
+              )}
             </div>
           )}
+
           <div style={{ marginTop: '1rem' }}>
             {selected.length === 0 && <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>No medicines added yet.</p>}
             {selected.map((m, i) => (
@@ -1123,7 +1332,7 @@ function IncomeMiniCards({ todayIncome, totalIncome }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ADD MEDICINE PANEL  ✅ NEW
+   ADD MEDICINE PANEL
    ═══════════════════════════════════════════════════════════════ */
 function AddMedicinePanel({ doctorId, token, onBack }) {
   const [name,        setName]    = useState('')
@@ -1140,14 +1349,13 @@ function AddMedicinePanel({ doctorId, token, onBack }) {
     try {
       const res  = await fetch(`${API}/medicines/doctor/${doctorId}`, { headers: authHeaders(token) })
       const data = await res.json()
-      // Only show this doctor's own medicines in the list (not global ones)
       const all  = Array.isArray(data) ? data : (data.medicines || [])
       setMyMeds(all.filter(m => String(m.doctorId) === String(doctorId)))
     } catch {}
     setLoading(false)
   }
 
-  useEffect(() => { fetchMyMeds() }, [doctorId])
+  useEffect(() => { fetchMyMeds() }, [doctorId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAdd = async () => {
     if (!name.trim()) { showToast('Medicine name is required', 'error'); return }
@@ -1194,7 +1402,6 @@ function AddMedicinePanel({ doctorId, token, onBack }) {
 
   return (
     <div>
-      {/* Header */}
       <div style={{
         background: 'white', borderRadius: 14, padding: '16px 22px',
         boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 20,
@@ -1221,7 +1428,6 @@ function AddMedicinePanel({ doctorId, token, onBack }) {
         </div>
       </div>
 
-      {/* Add Form */}
       <div style={{
         background: 'white', borderRadius: 14, padding: '20px 24px',
         boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 20,
@@ -1294,7 +1500,6 @@ function AddMedicinePanel({ doctorId, token, onBack }) {
         </button>
       </div>
 
-      {/* My Medicines List */}
       <div style={{
         background: 'white', borderRadius: 14, padding: '20px 24px',
         boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0',
@@ -1353,6 +1558,234 @@ function AddMedicinePanel({ doctorId, token, onBack }) {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ADD TESTS PANEL  (mirrors AddMedicinePanel)
+   ═══════════════════════════════════════════════════════════════ */
+function AddTestsPanel({ doctorId, token, onBack }) {
+  const [name,       setName]     = useState('')
+  const [category,   setCategory] = useState('Pathology')
+  const [saving,     setSaving]   = useState(false)
+  const [myTests,    setMyTests]  = useState([])
+  const [loading,    setLoading]  = useState(true)
+  const [deleting,   setDeleting] = useState(null)
+  const showToast = useToast()
+
+  const fetchMyTests = async () => {
+    setLoading(true)
+    try {
+      const res  = await fetch(`${API}/tests/doctor/${doctorId}`, { headers: authHeaders(token) })
+      const data = await res.json()
+      const all  = Array.isArray(data) ? data : (data.tests || [])
+      setMyTests(all.filter(t => String(t.doctorId) === String(doctorId)))
+    } catch {}
+    setLoading(false)
+  }
+
+  useEffect(() => { fetchMyTests() }, [doctorId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleAdd = async () => {
+    if (!name.trim()) { showToast('Test name is required', 'error'); return }
+    setSaving(true)
+    try {
+      const res  = await fetch(`${API}/tests/doctor/add`, {
+        method: 'POST',
+        headers: authHeaders(token),
+        body: JSON.stringify({ name: name.trim(), category, doctorId }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        showToast(`${name} added to your test list ✅`, 'success')
+        setName('')
+        fetchMyTests()
+      } else {
+        showToast(data.message || 'Failed to add', 'error')
+      }
+    } catch {
+      showToast('Server error', 'error')
+    }
+    setSaving(false)
+  }
+
+  const handleDelete = async (id, testName) => {
+    if (!window.confirm(`Remove "${testName}" from your list?`)) return
+    setDeleting(id)
+    try {
+      const res  = await fetch(`${API}/tests/doctor/${id}`, {
+        method: 'DELETE', headers: authHeaders(token),
+      })
+      const data = await res.json()
+      if (data.success) {
+        showToast(`${testName} removed`, 'info')
+        fetchMyTests()
+      } else {
+        showToast(data.message || 'Could not delete', 'error')
+      }
+    } catch {
+      showToast('Server error', 'error')
+    }
+    setDeleting(null)
+  }
+
+  const CATEGORY_COLORS = {
+    Pathology:  { bg: '#ecfeff', border: '#a5f3fc', text: '#0e7490', badge: '#cffafe' },
+    Radiology:  { bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8', badge: '#dbeafe' },
+    Cardiology: { bg: '#fdf2f8', border: '#f0abfc', text: '#a21caf', badge: '#fae8ff' },
+    Other:      { bg: '#f9fafb', border: '#d1d5db', text: '#374151', badge: '#f3f4f6' },
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{
+        background: 'white', borderRadius: 14, padding: '16px 22px',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 20,
+        display: 'flex', alignItems: 'center', gap: 14,
+      }}>
+        <button
+          onClick={onBack}
+          style={{
+            background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8,
+            padding: '8px 16px', cursor: 'pointer', fontSize: 13, color: '#374151',
+            fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+          }}
+        >
+          <i className="fas fa-arrow-left"></i> Back
+        </button>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#111827' }}>
+            <i className="fas fa-flask" style={{ marginRight: 10, color: '#0891b2' }}></i>
+            My Test List
+          </h2>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6b7280' }}>
+            Add tests you frequently order — auto-suggested when writing appointments
+          </p>
+        </div>
+      </div>
+
+      {/* Add form */}
+      <div style={{
+        background: 'white', borderRadius: 14, padding: '20px 24px',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 20,
+      }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#374151' }}>
+          <i className="fas fa-plus-circle" style={{ marginRight: 8, color: '#0891b2' }}></i>
+          Add New Test
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: 12, marginBottom: 14 }}>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+              Test Name *
+            </label>
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
+              placeholder="e.g. Complete Blood Count, Chest X-Ray, ECG..."
+              style={{
+                width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb',
+                borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none',
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+              Category
+            </label>
+            <select
+              value={category}
+              onChange={e => setCategory(e.target.value)}
+              style={{
+                width: '100%', padding: '9px 10px', border: '1.5px solid #e5e7eb',
+                borderRadius: 8, fontSize: 13, color: '#374151',
+              }}
+            >
+              {['Pathology', 'Radiology', 'Cardiology', 'Other'].map(c => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <button
+          onClick={handleAdd}
+          disabled={saving}
+          style={{
+            background: saving ? '#94a3b8' : 'linear-gradient(135deg,#0891b2,#0e7490)',
+            color: 'white', border: 'none', borderRadius: 8,
+            padding: '10px 24px', fontWeight: 700, fontSize: 13,
+            cursor: saving ? 'not-allowed' : 'pointer',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}
+        >
+          <i className={`fas ${saving ? 'fa-spinner fa-spin' : 'fa-plus'}`}></i>
+          {saving ? 'Adding...' : 'Add Test'}
+        </button>
+      </div>
+
+      {/* List */}
+      <div style={{
+        background: 'white', borderRadius: 14, padding: '20px 24px',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0',
+      }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#374151' }}>
+          <i className="fas fa-list" style={{ marginRight: 8, color: '#0891b2' }}></i>
+          My Added Tests ({myTests.length})
+        </h3>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 32 }}>
+            <i className="fas fa-spinner fa-spin" style={{ fontSize: 28, color: '#0891b2' }}></i>
+          </div>
+        ) : myTests.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
+            <i className="fas fa-flask" style={{ fontSize: 42, display: 'block', marginBottom: 14, color: '#d1d5db' }}></i>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>No tests added yet</p>
+            <p style={{ margin: '6px 0 0', fontSize: 13 }}>Use the form above to add your first test</p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
+            {myTests.map((test) => {
+              const colors = CATEGORY_COLORS[test.category] || CATEGORY_COLORS.Other
+              return (
+                <div key={test.id} style={{
+                  background: colors.bg,
+                  border: `1.5px solid ${colors.border}`,
+                  borderRadius: 12, padding: '14px 16px',
+                  display: 'flex', flexDirection: 'column', gap: 8,
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: colors.text, flex: 1, paddingRight: 8 }}>
+                      <i className="fas fa-flask" style={{ marginRight: 6, fontSize: 11, opacity: 0.7 }}></i>
+                      {test.name}
+                    </div>
+                    <button
+                      onClick={() => handleDelete(test.id, test.name)}
+                      disabled={deleting === test.id}
+                      title="Remove test"
+                      style={{
+                        background: 'none', border: 'none', color: '#ef4444',
+                        cursor: 'pointer', fontSize: 13, padding: 2, flexShrink: 0,
+                        opacity: deleting === test.id ? 0.5 : 1,
+                      }}
+                    >
+                      <i className={`fas ${deleting === test.id ? 'fa-spinner fa-spin' : 'fa-trash'}`}></i>
+                    </button>
+                  </div>
+                  <span style={{
+                    fontSize: 11, color: colors.text, background: colors.badge,
+                    padding: '2px 8px', borderRadius: 10, alignSelf: 'flex-start', fontWeight: 600,
+                  }}>
+                    {test.category || 'Other'}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
@@ -1743,8 +2176,9 @@ export default function DoctorDashboard() {
                             } else if (item.key === 'home') {
                               setActiveNav('home')
                             } else if (item.key === 'medicines') {
-                              // ✅ NEW: navigate to medicines panel
                               setActiveNav('medicines')
+                            } else if (item.key === 'mytests') {
+                              setActiveNav('mytests')
                             } else {
                               setActiveNav(item.key)
                               showToast(`${item.label} coming soon!`, 'info')
@@ -1770,7 +2204,7 @@ export default function DoctorDashboard() {
         <div className="pd-main" style={{ width: '100%' }}>
           <main className="pd-body">
 
-            {/* Welcome Header — always visible */}
+            {/* Welcome Header */}
             <div style={{
               display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
               background: 'white', borderRadius: 16, padding: '20px 28px',
@@ -1820,7 +2254,6 @@ export default function DoctorDashboard() {
               />
             )}
 
-            {/* ✅ MY PATIENTS VIEW */}
             {activeNav === 'patients' && isContentVisible && (
               <MyPatientsView
                 patients={recentPatients}
@@ -1830,7 +2263,6 @@ export default function DoctorDashboard() {
               />
             )}
 
-            {/* ✅ MY MEDICINES PANEL — NEW */}
             {activeNav === 'medicines' && isContentVisible && (
               <AddMedicinePanel
                 doctorId={doctor.id}
@@ -1839,8 +2271,16 @@ export default function DoctorDashboard() {
               />
             )}
 
-            {/* ✅ MAIN DASHBOARD — hidden when sub-views are active */}
-            {activeNav !== 'patients' && activeNav !== 'medicines' && isContentVisible && isActive && (
+            {/* ── My Tests Panel ── */}
+            {activeNav === 'mytests' && isContentVisible && (
+              <AddTestsPanel
+                doctorId={doctor.id}
+                token={token}
+                onBack={() => setActiveNav('home')}
+              />
+            )}
+
+            {activeNav !== 'patients' && activeNav !== 'medicines' && activeNav !== 'mytests' && isContentVisible && isActive && (
               <PatientIncomingBanner
                 requests={requests}
                 onAccept={id => respondToRequest(id, 'accepted')}
@@ -1848,7 +2288,7 @@ export default function DoctorDashboard() {
               />
             )}
 
-            {activeNav !== 'patients' && activeNav !== 'medicines' && isContentVisible && (
+            {activeNav !== 'patients' && activeNav !== 'medicines' && activeNav !== 'mytests' && isContentVisible && (
               <div className={`dd-content-area${isActive ? '' : ' inactive'}`}>
                 {!isActive && (
                   <div className="dd-closed-badge">
@@ -1863,7 +2303,6 @@ export default function DoctorDashboard() {
                   </div>
                 )}
 
-                {/* Stats */}
                 <div className="pd-stats" style={{ marginBottom: 24 }}>
                   {[
                     { icon: 'fa-users',                   cls: '--blue',   num: stats.total,         label: 'Total Patients'       },
@@ -1883,7 +2322,6 @@ export default function DoctorDashboard() {
 
                 <div className="dashboard-grid">
 
-                  {/* Today's Schedule */}
                   <div className="dashboard-card full-width">
                     <div className="card-header">
                       <i className="fas fa-calendar-day"></i>
@@ -1918,7 +2356,6 @@ export default function DoctorDashboard() {
                     </div>
                   </div>
 
-                  {/* Recent Patients */}
                   <div className="dashboard-card">
                     <div className="card-header"><i className="fas fa-user-injured"></i><h3>Recent Patients</h3></div>
                     <div className="card-body">
@@ -1960,7 +2397,6 @@ export default function DoctorDashboard() {
                     </div>
                   </div>
 
-                  {/* Pending Prescriptions */}
                   <div className="dashboard-card">
                     <div className="card-header"><i className="fas fa-prescription"></i><h3>Pending Prescriptions</h3></div>
                     <div className="card-body">
@@ -1990,7 +2426,6 @@ export default function DoctorDashboard() {
                     </div>
                   </div>
 
-                  {/* New Patient Requests */}
                   <div className="dashboard-card">
                     <div className="card-header"><i className="fas fa-user-plus"></i><h3>New Patient Requests</h3></div>
                     <div className="card-body">
@@ -2022,7 +2457,6 @@ export default function DoctorDashboard() {
                     </div>
                   </div>
 
-                  {/* Profile */}
                   <div className="dashboard-card">
                     <div className="card-header"><i className="fas fa-user-md"></i><h3>Your Profile</h3></div>
                     <div className="card-body">
@@ -2048,7 +2482,7 @@ export default function DoctorDashboard() {
                     </div>
                   </div>
 
-                  {/* ✅ Quick Add Medicine card on dashboard */}
+                  {/* ── My Medicines dashboard card ── */}
                   <div className="dashboard-card">
                     <div className="card-header">
                       <i className="fas fa-pills" style={{ color: '#7c3aed' }}></i>
@@ -2069,6 +2503,27 @@ export default function DoctorDashboard() {
                     </div>
                   </div>
 
+                  {/* ── My Tests dashboard card ── */}
+                  <div className="dashboard-card">
+                    <div className="card-header">
+                      <i className="fas fa-flask" style={{ color: '#0891b2' }}></i>
+                      <h3>My Tests</h3>
+                    </div>
+                    <div className="card-body" style={{ textAlign: 'center', padding: '24px 16px' }}>
+                      <i className="fas fa-flask" style={{ fontSize: 36, color: '#a5f3fc', display: 'block', marginBottom: 12 }}></i>
+                      <p style={{ color: '#6b7280', fontSize: 13, margin: '0 0 16px' }}>
+                        Manage your frequently ordered tests — auto-suggested when ordering pathology or radiology.
+                      </p>
+                      <button
+                        className="btn btn-primary btn-full"
+                        style={{ background: 'linear-gradient(135deg,#0891b2,#0e7490)', border: 'none' }}
+                        onClick={() => setActiveNav('mytests')}
+                      >
+                        <i className="fas fa-plus"></i> Add / View Tests
+                      </button>
+                    </div>
+                  </div>
+
                 </div>
               </div>
             )}
@@ -2076,7 +2531,6 @@ export default function DoctorDashboard() {
         </div>
       </div>
 
-      {/* Patient Record Modal */}
       {patientRecordModal && (
         <PatientRecordModal
           patientId={patientRecordModal.patientId}
