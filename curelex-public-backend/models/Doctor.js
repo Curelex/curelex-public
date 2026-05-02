@@ -5,82 +5,114 @@ const Doctor = sequelize.define("Doctor", {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
-    primaryKey: true
+    primaryKey: true,
   },
+
+  // ── Core account fields (set at registration) ──
   name: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: false,
   },
   email: {
     type: DataTypes.STRING,
     allowNull: false,
-    unique: true
-  },
-  mobile: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    unique: true
-  },
-  regNum: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    unique: true
-  },
-  regState: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  age: {
-    type: DataTypes.INTEGER,
-    allowNull: true
-  },
-  gender: {
-    type: DataTypes.ENUM("male", "female", "other"),
-    allowNull: true
-  },
-  patientsHandeled: {
-    type: DataTypes.INTEGER,
-    allowNull: true
+    unique: true,
   },
   password: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: false,
+  },
+
+  // ── Step 1: Basic Info ──
+  mobile: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true,
   },
   specialization: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
   },
-  experience: {
-    type: DataTypes.INTEGER,
-    allowNull: true
+
+  // ── Step 2: Professional Documents ──
+  address: {
+    type: DataTypes.TEXT,
+    allowNull: true,
   },
-  certificateUrl: {
-    type: DataTypes.STRING
-  },
-  certificatePublicId: {
+  aadhaar: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
+  },
+  licenseNumber: {
+    type: DataTypes.STRING,
+    allowNull: true,
   },
   photoUrl: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
   },
   photoPublicId: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
   },
+  certificateUrl: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  certificatePublicId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+
+  // ── Step 3: Professional Experience ──
+  experience: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  qualification: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  currentInstitute: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+
+  // ── Step 4: Bank / Payment Details ──
+  bankName: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  accountHolderName: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  accountNumber: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  ifscCode: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+
+  // ── Status & activity ──
   verificationStatus: {
     type: DataTypes.ENUM("pending", "approved", "rejected"),
-    defaultValue: "pending"
+    defaultValue: "pending",
   },
-  // ✅ NEW: tracks whether the doctor toggled themselves online/offline
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
-    allowNull: false
-  }
+    allowNull: false,
+  },
+  profileComplete: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false,
+  },
 }, {
-  timestamps: true
+  timestamps: true,
 });
 
 module.exports = Doctor;

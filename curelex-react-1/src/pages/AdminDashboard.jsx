@@ -19,12 +19,13 @@ export default function AdminDashboard() {
   const [loginErr,  setLoginErr] = useState('')
   const [loginLoad, setLoginLoad]= useState(false)
 
-  const [doctors,  setDoctors]  = useState([])
-  const [loading,  setLoading]  = useState(false)
-  const [tab,      setTab]      = useState('pending')
-  const [search,   setSearch]   = useState('')
-  const [toast,    setToast]    = useState(null)
-  const [viewDoc,  setViewDoc]  = useState(null)
+  const [doctors,       setDoctors]       = useState([])
+  const [loading,       setLoading]       = useState(false)
+  const [tab,           setTab]           = useState('pending')
+  const [search,        setSearch]        = useState('')
+  const [toast,         setToast]         = useState(null)
+  const [viewDoc,       setViewDoc]       = useState(null)
+  const [viewDocLoading, setViewDocLoading] = useState(false)
 
   useEffect(() => {
     if (authed && token) loadDoctors()
@@ -80,6 +81,21 @@ export default function AdminDashboard() {
       showToast('Failed to load doctors', 'error')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function fetchAndViewDoc(doc) {
+    // Open modal immediately with partial data so UI feels instant
+    setViewDoc(doc)
+    setViewDocLoading(true)
+    try {
+      const res  = await fetch(`${API}/doctors/${doc.id}`, { headers: authHeaders(token) })
+      const data = await res.json()
+      if (data.doctor) setViewDoc(data.doctor)
+    } catch {
+      showToast('Failed to load doctor details', 'error')
+    } finally {
+      setViewDocLoading(false)
     }
   }
 
@@ -286,7 +302,7 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
-                    <button onClick={() => setViewDoc(doc)} style={{ background: 'linear-gradient(135deg,#2563eb,#7c3aed)', color: 'white', border: 'none', borderRadius: 8, padding: '9px 20px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                    <button onClick={() => fetchAndViewDoc(doc)} style={{ background: 'linear-gradient(135deg,#2563eb,#7c3aed)', color: 'white', border: 'none', borderRadius: 8, padding: '9px 20px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                       <i className="fas fa-eye" style={{ marginRight: 6 }}></i>View
                     </button>
                     {status !== 'approved' && (
@@ -307,10 +323,10 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      {/* ══ DOCTOR DETAIL MODAL — shows ALL fields from DB schema ══ */}
+      {/* ══ DOCTOR DETAIL MODAL ══ */}
       {viewDoc && (
         <div onClick={() => setViewDoc(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backdropFilter: 'blur(3px)' }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 20, width: '100%', maxWidth: 720, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.35)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 20, width: '100%', maxWidth: 720, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.35)', fontFamily: "'Poppins',sans-serif" }}>
 
             {/* Modal Header */}
             <div style={{ background: 'linear-gradient(135deg,#2563eb,#7c3aed)', borderRadius: '20px 20px 0 0', padding: '24px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -325,9 +341,8 @@ export default function AdminDashboard() {
                 <div>
                   <h2 style={{ margin: 0, color: 'white', fontSize: 20, fontWeight: 700 }}>Dr. {viewDoc.name}</h2>
                   <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>
-                    {viewDoc.specialization || 'Specialization not set'} · {viewDoc.experience ? `${viewDoc.experience}+ yrs exp` : 'Experience not set'}
+                    {viewDoc.specialization || '—'}{viewDoc.experience ? ` · ${viewDoc.experience}+ yrs exp` : ''}
                   </p>
-                  {/* Verification status badge */}
                   <span style={{
                     display: 'inline-block', marginTop: 6, fontSize: 11, fontWeight: 700,
                     padding: '2px 12px', borderRadius: 20, textTransform: 'uppercase',
@@ -341,76 +356,115 @@ export default function AdminDashboard() {
               <button onClick={() => setViewDoc(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: 36, height: 36, cursor: 'pointer', color: 'white', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
 
-            <div style={{ padding: '24px 28px' }}>
-
-              {/* Section: Personal Information */}
-              <SectionHeader icon="fa-user" label="Personal Information" color="#2563eb" />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, marginBottom: 20 }}>
-                <InfoRow label="Full Name"   value={viewDoc.name}                              icon="fa-id-card"       />
-                <InfoRow label="Email"       value={viewDoc.email}                             icon="fa-envelope"      />
-                <InfoRow label="Mobile"      value={viewDoc.mobile}                            icon="fa-phone"         />
-                <InfoRow label="Age"         value={viewDoc.age ? `${viewDoc.age} years` : null} icon="fa-birthday-cake" />
-                <InfoRow label="Gender"      value={viewDoc.gender}                            icon="fa-venus-mars"    capitalize />
+            {/* Loading bar */}
+            {viewDocLoading && (
+              <div style={{ background: '#eff6ff', borderBottom: '1px solid #bfdbfe', padding: '8px 28px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#1d4ed8' }}>
+                <i className="fas fa-spinner fa-spin"></i> Loading doctor details…
               </div>
+            )}
 
-              {/* Section: Professional Details */}
-              <SectionHeader icon="fa-stethoscope" label="Professional Details" color="#7c3aed" />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, marginBottom: 20 }}>
-                <InfoRow label="Specialization"    value={viewDoc.specialization}                                icon="fa-stethoscope"   />
-                <InfoRow label="Experience"        value={viewDoc.experience ? `${viewDoc.experience}+ years` : null} icon="fa-briefcase-medical" />
-                <InfoRow label="Patients Handled"  value={viewDoc.patientsHandeled != null ? viewDoc.patientsHandeled.toLocaleString() : null} icon="fa-users" />
-                <InfoRow label="Reg. Number"       value={viewDoc.regNum}                                        icon="fa-id-badge"      />
-                <InfoRow label="Reg. State"        value={viewDoc.regState}                                      icon="fa-map-marker-alt"/>
-              </div>
+            <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-              {/* Section: Documents */}
-              <SectionHeader icon="fa-file-medical" label="Uploaded Documents" color="#0891b2" />
-              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
-                {viewDoc.certificateUrl ? (
-                  <a href={viewDoc.certificateUrl} target="_blank" rel="noopener noreferrer"
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: 12, padding: '12px 18px', textDecoration: 'none', color: '#1d4ed8', fontWeight: 600, fontSize: 13, transition: 'all 0.18s' }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#dbeafe'}
-                    onMouseLeave={e => e.currentTarget.style.background = '#eff6ff'}
-                  >
-                    <i className="fas fa-file-certificate" style={{ fontSize: 20, color: '#2563eb' }}></i>
-                    <div>
-                      <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 2 }}>Medical Certificate</div>
-                      <div>View Document ↗</div>
-                    </div>
-                  </a>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f9fafb', border: '1.5px solid #e5e7eb', borderRadius: 12, padding: '12px 18px', color: '#9ca3af', fontSize: 13 }}>
-                    <i className="fas fa-file-times" style={{ fontSize: 20 }}></i>
-                    <div>
-                      <div style={{ fontSize: 12, marginBottom: 2 }}>Medical Certificate</div>
-                      <div style={{ fontStyle: 'italic' }}>Not uploaded</div>
-                    </div>
+              {/* Profile incomplete warning */}
+              {!viewDoc.profileComplete && (
+                <div style={{ background: '#fffbeb', border: '1.5px solid #fcd34d', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <i className="fas fa-exclamation-triangle" style={{ color: '#f59e0b', fontSize: 16, flexShrink: 0 }}></i>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>Profile Incomplete</div>
+                    <div style={{ fontSize: 12, color: '#b45309', marginTop: 2 }}>This doctor has not submitted their full profile yet. Fields below may be empty until they complete the profile form.</div>
                   </div>
-                )}
+                </div>
+              )}
 
-                {viewDoc.photoUrl && (
-                  <a href={viewDoc.photoUrl} target="_blank" rel="noopener noreferrer"
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: 12, padding: '12px 18px', textDecoration: 'none', color: '#16a34a', fontWeight: 600, fontSize: 13 }}
-                  >
-                    <i className="fas fa-image" style={{ fontSize: 20, color: '#10b981' }}></i>
-                    <div>
-                      <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 2 }}>Profile Photo</div>
-                      <div>View Photo ↗</div>
+              {/* ── Section 1: Basic Info (Step 1 of form) ── */}
+              <SectionBlock icon="fa-user" label="Basic Information" color="#2563eb">
+                <InfoRow label="Full Name"      icon="fa-id-card"     value={viewDoc.name} />
+                <InfoRow label="Email"          icon="fa-envelope"    value={viewDoc.email} />
+                <InfoRow label="Mobile"         icon="fa-phone"       value={viewDoc.mobile} />
+                <InfoRow label="Specialization" icon="fa-stethoscope" value={viewDoc.specialization} />
+                <InfoRow label="Registered On"  icon="fa-calendar-alt"
+                  value={viewDoc.createdAt
+                    ? new Date(viewDoc.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+                    : null}
+                />
+              </SectionBlock>
+
+              {/* ── Section 2: Documents (Step 2 of form) ── */}
+              <SectionBlock icon="fa-file-alt" label="Professional Documents" color="#0891b2">
+                <InfoRow label="Clinic / Home Address" icon="fa-map-marker-alt" value={viewDoc.address} />
+                <InfoRow label="Aadhaar Number"        icon="fa-id-badge"       value={viewDoc.aadhaar} />
+                <InfoRow label="License / Reg. Number" icon="fa-certificate"    value={viewDoc.licenseNumber} />
+
+                {/* Profile Photo preview */}
+                <div style={{ padding: '12px 0', borderBottom: '1px solid #f0f0f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <i className="fas fa-image" style={{ fontSize: 13, color: '#9ca3af', width: 16 }}></i>
+                    <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>Profile Photo</span>
+                  </div>
+                  {viewDoc.photoUrl ? (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                      <img src={viewDoc.photoUrl} alt="Profile"
+                        style={{ width: 100, height: 100, borderRadius: 12, objectFit: 'cover', border: '2px solid #e5e7eb', flexShrink: 0 }} />
+                      <a href={viewDoc.photoUrl} target="_blank" rel="noopener noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: 8, padding: '7px 14px', textDecoration: 'none', color: '#16a34a', fontWeight: 600, fontSize: 12, marginTop: 4 }}>
+                        <i className="fas fa-external-link-alt"></i> View Full Size ↗
+                      </a>
                     </div>
-                  </a>
-                )}
-              </div>
+                  ) : (
+                    <span style={{ fontSize: 13, color: '#d1d5db', fontStyle: 'italic' }}>Not uploaded</span>
+                  )}
+                </div>
 
-              {/* Section: Account Info */}
-              <SectionHeader icon="fa-cog" label="Account Information" color="#6b7280" />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, marginBottom: 24 }}>
-                <InfoRow label="Online Status"  value={viewDoc.isActive ? 'Active / Online' : 'Inactive / Offline'} icon="fa-circle" valueColor={viewDoc.isActive ? '#16a34a' : '#9ca3af'} />
-                <InfoRow label="Registered On"  value={viewDoc.createdAt ? new Date(viewDoc.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null} icon="fa-calendar-alt" />
-                <InfoRow label="Last Updated"   value={viewDoc.updatedAt ? new Date(viewDoc.updatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null} icon="fa-clock" />
-              </div>
+                {/* Registration Certificate */}
+                <div style={{ padding: '12px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <i className="fas fa-file-medical" style={{ fontSize: 13, color: '#9ca3af', width: 16 }}></i>
+                    <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>Registration Certificate</span>
+                  </div>
+                  {viewDoc.certificateUrl ? (
+                    /* If it's an image URL, show inline preview; otherwise show download button */
+                    /\.(jpg|jpeg|png|webp)(\?.*)?$/i.test(viewDoc.certificateUrl) ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <img src={viewDoc.certificateUrl} alt="Certificate"
+                          style={{ maxWidth: '100%', maxHeight: 320, borderRadius: 10, border: '1px solid #e5e7eb', objectFit: 'contain' }} />
+                        <a href={viewDoc.certificateUrl} target="_blank" rel="noopener noreferrer"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: 8, padding: '7px 14px', textDecoration: 'none', color: '#1d4ed8', fontWeight: 600, fontSize: 12, width: 'fit-content' }}>
+                          <i className="fas fa-external-link-alt"></i> Open Full Size ↗
+                        </a>
+                      </div>
+                    ) : (
+                      <a href={viewDoc.certificateUrl} target="_blank" rel="noopener noreferrer" download
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: 8, padding: '10px 18px', textDecoration: 'none', color: '#1d4ed8', fontWeight: 600, fontSize: 13 }}>
+                        <i className="fas fa-file-pdf" style={{ fontSize: 18, color: '#ef4444' }}></i>
+                        <div>
+                          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 2 }}>PDF Document</div>
+                          <div>Download Certificate ↓</div>
+                        </div>
+                      </a>
+                    )
+                  ) : (
+                    <span style={{ fontSize: 13, color: '#d1d5db', fontStyle: 'italic' }}>Not uploaded</span>
+                  )}
+                </div>
+              </SectionBlock>
+
+              {/* ── Section 3: Experience (Step 3 of form) ── */}
+              <SectionBlock icon="fa-briefcase-medical" label="Professional Experience" color="#7c3aed">
+                <InfoRow label="Years of Experience"       icon="fa-briefcase"       value={viewDoc.experience ? `${viewDoc.experience} years` : null} />
+                <InfoRow label="Qualification"             icon="fa-graduation-cap"  value={viewDoc.qualification} />
+                <InfoRow label="Current Practice Institute" icon="fa-hospital"       value={viewDoc.currentInstitute} />
+              </SectionBlock>
+
+              {/* ── Section 4: Bank / Payment (Step 4 of form) ── */}
+              <SectionBlock icon="fa-university" label="Bank / Payment Details" color="#059669">
+                <InfoRow label="Bank Name"          icon="fa-building"    value={viewDoc.bankName} />
+                <InfoRow label="Account Holder"     icon="fa-user"        value={viewDoc.accountHolderName} />
+                <InfoRow label="Account Number"     icon="fa-hashtag"     value={viewDoc.accountNumber} />
+                <InfoRow label="IFSC Code"          icon="fa-code"        value={viewDoc.ifscCode} />
+              </SectionBlock>
 
               {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 16, borderTop: '1px solid #f3f4f6' }}>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 8, borderTop: '1px solid #f3f4f6' }}>
                 {viewDoc.verificationStatus !== 'approved' && (
                   <button onClick={() => { approve(viewDoc.id); setViewDoc(null) }}
                     style={{ background: 'linear-gradient(135deg,#10b981,#059669)', color: 'white', border: 'none', borderRadius: 10, padding: '11px 28px', fontWeight: 700, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -428,6 +482,7 @@ export default function AdminDashboard() {
                   Close
                 </button>
               </div>
+
             </div>
           </div>
         </div>
@@ -438,27 +493,34 @@ export default function AdminDashboard() {
   )
 }
 
-/* ── Small helper components used only in the modal ── */
+/* ── Modal helper components ── */
 
-function SectionHeader({ icon, label, color }) {
+function SectionBlock({ icon, label, color, children }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 8, borderBottom: `2px solid ${color}22` }}>
-      <div style={{ width: 28, height: 28, borderRadius: 8, background: color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <i className={`fas ${icon}`} style={{ fontSize: 13, color }}></i>
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, paddingBottom: 8, borderBottom: `2px solid ${color}22` }}>
+        <div style={{ width: 28, height: 28, borderRadius: 8, background: color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <i className={`fas ${icon}`} style={{ fontSize: 13, color }}></i>
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
       </div>
-      <span style={{ fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
+      <div style={{ background: '#f9fafb', borderRadius: 10, padding: '4px 16px', border: '1px solid #f0f0f0' }}>
+        {children}
+      </div>
     </div>
   )
 }
 
-function InfoRow({ label, value, icon, capitalize, valueColor }) {
-  if (value == null || value === '') return null
+function InfoRow({ label, value, icon, valueColor }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', borderBottom: '1px solid #f9fafb' }}>
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
       <i className={`fas ${icon}`} style={{ fontSize: 13, color: '#9ca3af', marginTop: 2, width: 16, flexShrink: 0 }}></i>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500, marginBottom: 2 }}>{label}</div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: valueColor || '#111827', textTransform: capitalize ? 'capitalize' : 'none', wordBreak: 'break-word' }}>{value}</div>
+        {(value != null && value !== '')
+          ? <div style={{ fontSize: 13, fontWeight: 600, color: valueColor || '#111827', wordBreak: 'break-word' }}>{value}</div>
+          : <div style={{ fontSize: 12, color: '#d1d5db', fontStyle: 'italic' }}>Not provided</div>
+        }
       </div>
     </div>
   )

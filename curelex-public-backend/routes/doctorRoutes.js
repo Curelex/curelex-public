@@ -15,6 +15,7 @@ const {
   getDoctorById,
   toggleActive,
   updateProfilePhoto,
+  updateProfile,
 } = require('../controllers/doctorController')
 
 const auth                    = require('../middleware/auth')
@@ -45,6 +46,9 @@ router.get('/all', auth, getApprovedDoctors)
 
 // GET a single doctor by id (used by dashboard fetchFreshProfile)
 router.get('/:id', auth, getDoctorById)
+
+// PUT /doctors/:id/profile  — save full profile form
+router.put('/:id/profile', auth, doctorAuth, updateProfile)
 
 /**
  * PATCH /doctors/:id/active

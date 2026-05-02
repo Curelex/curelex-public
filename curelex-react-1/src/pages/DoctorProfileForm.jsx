@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Toast, useToast } from '../components/Toast'
+import { useAuth } from '../context/AuthContext'
 
 const SPECIALIZATIONS = [
   'General Medicine', 'Cardiology', 'Neurology', 'Orthopedics',
@@ -29,6 +30,7 @@ export default function DoctorProfileForm() {
   const [loading, setLoading] = useState(false)
   const showToast = useToast()
   const navigate  = useNavigate()
+  const { currentUser, token } = useAuth()
 
   const set     = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
   const setUpper = k => e => setForm(f => ({ ...f, [k]: e.target.value.toUpperCase() }))
@@ -55,13 +57,6 @@ export default function DoctorProfileForm() {
     setStep(s => s + 1)
   }
 
-  const readFileAsBase64 = file => new Promise((res, rej) => {
-    if (!file) return res(null)
-    const r = new FileReader()
-    r.readAsDataURL(file)
-    r.onload  = () => res(r.result)
-    r.onerror = e  => rej(e)
-  })
 
   const handleSubmit = async e => {
     e.preventDefault()
@@ -69,50 +64,80 @@ export default function DoctorProfileForm() {
       return showToast('Please fill all payment fields', 'error')
     setLoading(true)
     try {
-      const profilePhotoData   = await readFileAsBase64(form.profilePhoto)
-      const regCertificateData = await readFileAsBase64(form.regCertificate)
-      const doctorId = 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2,9)
-      const doctorData = {
-        id: doctorId, name: form.name, email: form.email, mobile: form.mobile,
-        specialization: form.specialization, experience: form.experience,
-        qualification: form.qualification, regNumber: form.licenseNumber,
-        address: form.address, aadhaar: form.aadhaar, currentInstitute: form.currentInstitute,
-        hospital: form.currentInstitute,
-        isApproved: false, status: 'pending', profileComplete: true,
-        createdAt: new Date().toISOString(),
-        profilePhoto: profilePhotoData, regCertificate: regCertificateData,
-        bankName: form.bankName, accountNumber: form.accountNumber,
-        ifscCode: form.ifscCode, accountHolderName: form.accountHolderName,
+      // Read token and id from AuthContext (the single source of truth)
+      const doctorId = currentUser?.id
+      const authToken = token || localStorage.getItem('curelex-token') || ''
+
+      if (!authToken || !doctorId) {
+        showToast('Session expired. Please log in again.', 'error')
+        setLoading(false)
+        return
       }
 
+      // Upload photo to Cloudinary via backend if a file was selected,
+      // otherwise fall back to base64 preview stored in body (backend accepts both)
+      let photoUrl        = null
+      let certificateUrl  = null
+
+      if (form.profilePhoto) {
+        const photoFormData = new FormData()
+        photoFormData.append('photo', form.profilePhoto)
+        const photoRes = await fetch(`http://localhost:5000/api/doctors/${doctorId}/photo`, {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${authToken}` },
+          body: photoFormData,
+        })
+        const photoData = await photoRes.json()
+        if (photoData.photoUrl) photoUrl = photoData.photoUrl
+      }
+
+      // Submit all profile fields in one PUT call
+      const profilePayload = {
+        name:              form.name,
+        mobile:            form.mobile,
+        specialization:    form.specialization,
+        address:           form.address,
+        aadhaar:           form.aadhaar,
+        licenseNumber:     form.licenseNumber,
+        experience:        form.experience ? Number(form.experience) : null,
+        qualification:     form.qualification,
+        currentInstitute:  form.currentInstitute,
+        bankName:          form.bankName,
+        accountHolderName: form.accountHolderName,
+        accountNumber:     form.accountNumber,
+        ifscCode:          form.ifscCode,
+        ...(photoUrl       ? { photoUrl }       : {}),
+        ...(certificateUrl ? { certificateUrl } : {}),
+      }
+
+      const res  = await fetch(`http://localhost:5000/api/doctors/${doctorId}/profile`, {
+        method:  'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization:  `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(profilePayload),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        showToast(data.message || 'Profile update failed', 'error')
+        setLoading(false)
+        return
+      }
+
+      // Keep localStorage in sync for dashboard display
       localStorage.setItem('doctor-profile-complete', 'true')
-      localStorage.setItem('doctor-approved', 'false')
-      localStorage.setItem('doctor-data', JSON.stringify(doctorData))
-
-      // ── Upsert into curelex_doctors so AdminDashboard can see this doctor ──
-      const existingDoctors = JSON.parse(localStorage.getItem('curelex_doctors') || '[]')
-      const existingIndex = existingDoctors.findIndex(
-        d => d.id === doctorData.id || d.email === doctorData.email
-      )
-      if (existingIndex !== -1) {
-        existingDoctors[existingIndex] = { ...existingDoctors[existingIndex], ...doctorData, status: 'pending' }
-      } else {
-        existingDoctors.push(doctorData)
+      if (data.doctor) {
+        const existing = JSON.parse(localStorage.getItem('curelex-current-user') || '{}')
+        localStorage.setItem('curelex-current-user', JSON.stringify({ ...existing, ...data.doctor }))
       }
-      localStorage.setItem('curelex_doctors', JSON.stringify(existingDoctors))
-      // ──────────────────────────────────────────────────────────────────────
 
-      const cur = localStorage.getItem('curelex-current-user')
-      if (cur) {
-        const u = JSON.parse(cur)
-        u.name = form.name; u.email = form.email; u.specialization = form.specialization
-        localStorage.setItem('curelex-current-user', JSON.stringify(u))
-      }
       showToast('Profile submitted successfully!', 'success')
       setStep(5)
     } catch (err) {
       console.error(err)
-      showToast('Error saving profile. Please try again.', 'error')
+      showToast('Network error. Is the backend running?', 'error')
     } finally {
       setLoading(false)
     }

@@ -66,10 +66,10 @@ exports.loginDoctor = async (req, res, next) => {
         email:              doctor.email,
         specialization:     doctor.specialization,
         photoUrl:           doctor.photoUrl,
-        verificationStatus: doctor.verificationStatus, // fresh from DB
-        isActive:           doctor.isActive,            // fresh from DB
+        verificationStatus: doctor.verificationStatus,
+        isActive:           doctor.isActive,
         experience:         doctor.experience,
-        hospital:           doctor.hospital || doctor.regState,
+        currentInstitute:   doctor.currentInstitute,
         mobile:             doctor.mobile,
       },
     })
@@ -118,9 +118,12 @@ exports.getAllDoctors = async (req, res, next) => {
   try {
     const doctors = await Doctor.findAll({
       attributes: [
-        'id', 'name', 'email', 'specialization', 'experience',
-        'gender', 'regState', 'patientsHandeled',
-        'photoUrl', 'verificationStatus', 'isActive', 'mobile',
+        'id', 'name', 'email', 'mobile', 'specialization', 'experience',
+        'photoUrl', 'verificationStatus', 'isActive', 'profileComplete',
+        'address', 'aadhaar', 'licenseNumber', 'qualification',
+        'currentInstitute', 'certificateUrl',
+        'bankName', 'accountHolderName', 'accountNumber', 'ifscCode',
+        'createdAt',
       ],
       order: [
         ['verificationStatus', 'ASC'],
@@ -140,9 +143,9 @@ exports.getApprovedDoctors = async (req, res, next) => {
     const doctors = await Doctor.findAll({
       where: { verificationStatus: 'approved' },
       attributes: [
-        'id', 'name', 'email', 'specialization', 'experience',
-        'gender', 'regState', 'patientsHandeled',
-        'photoUrl', 'verificationStatus', 'isActive',
+        'id', 'name', 'email', 'mobile', 'specialization', 'experience',
+        'photoUrl', 'verificationStatus', 'isActive', 'qualification',
+        'currentInstitute', 'address',
       ],
     })
     res.json({ success: true, count: doctors.length, doctors })
@@ -159,6 +162,51 @@ exports.getDoctorById = async (req, res, next) => {
     })
     if (!doctor) return res.status(404).json({ message: 'Doctor not found' })
     res.json({ success: true, doctor })
+  } catch (error) {
+    next(error)
+  }
+}
+
+/* ── UPDATE FULL PROFILE (called after DoctorProfileForm submit) ── */
+/**
+ * PUT /api/doctors/:id/profile
+ * Saves all four steps of the profile form to the DB.
+ * Fields accepted exactly match what DoctorProfileForm collects.
+ * Files (photo / certificate) are handled separately via Cloudinary
+ * upload middleware; here we only persist the resulting URLs if provided.
+ */
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const doctor = await Doctor.findByPk(req.params.id)
+    if (!doctor) return res.status(404).json({ message: 'Doctor not found' })
+
+    // Only allow the doctor themselves to update their own profile
+    if (String(req.user.id) !== String(doctor.id)) {
+      return res.status(403).json({ message: 'Forbidden' })
+    }
+
+    const allowed = [
+      // Step 1
+      'name', 'mobile', 'specialization',
+      // Step 2
+      'address', 'aadhaar', 'licenseNumber',
+      'photoUrl', 'photoPublicId', 'certificateUrl', 'certificatePublicId',
+      // Step 3
+      'experience', 'qualification', 'currentInstitute',
+      // Step 4
+      'bankName', 'accountHolderName', 'accountNumber', 'ifscCode',
+    ]
+
+    allowed.forEach(field => {
+      if (req.body[field] !== undefined) doctor[field] = req.body[field]
+    })
+
+    doctor.profileComplete = true
+    await doctor.save()
+
+    // Return safe subset (no password, no bank details in list view)
+    const { password: _pw, ...safe } = doctor.toJSON()
+    res.json({ success: true, doctor: safe })
   } catch (error) {
     next(error)
   }
