@@ -19,6 +19,11 @@ const Medicine = sequelize.define("Medicine", {
   },
   manufacturer: {
     type: DataTypes.STRING
+  },
+  // ✅ NEW: links medicine to a specific doctor
+  doctorId: {
+    type: DataTypes.INTEGER,
+    allowNull: true  // null = global, number = doctor's own
   }
 }, {
   timestamps: true

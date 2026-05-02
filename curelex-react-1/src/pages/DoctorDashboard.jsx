@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { icon: 'fa-file-medical-alt',        label: 'Medical Reports',      key: 'reports'      },
   { icon: 'fa-chart-bar',               label: 'Analytics',            key: 'analytics'    },
   { icon: 'fa-comment-dots',            label: 'Feedback',             key: 'feedback'     },
+  { icon: 'fa-pills',                   label: 'My Medicines',         key: 'medicines'    }, // ✅ NEW
   { divider: true },
   { icon: 'fa-user-circle',             label: 'View / Update Profile',key: 'profile'      },
   { icon: 'fa-cog',                     label: 'Settings',             key: 'settings'     },
@@ -247,9 +248,10 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
   const [approving,   setApproving]   = useState(false)
   const [saved,       setSaved]       = useState(false)
 
+  // ✅ FIXED: fetch doctor-specific medicines (own + global)
   useEffect(() => {
     if (!expanded) return
-    fetch(`${API}/medicines/all`, { headers: authHeaders(token) })
+    fetch(`${API}/medicines/doctor/${doctorId}`, { headers: authHeaders(token) })
       .then(r => r.json())
       .then(d => setAllMeds(Array.isArray(d) ? d : (d.medicines || [])))
       .catch(() => {})
@@ -562,6 +564,11 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
                         onMouseLeave={e => e.currentTarget.style.background = 'white'}
                       >
                         {m.name}
+                        {m.doctorId && (
+                          <span style={{ marginLeft: 6, fontSize: 10, background: '#ede9fe', color: '#7c3aed', padding: '1px 6px', borderRadius: 10 }}>
+                            My Medicine
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -767,8 +774,9 @@ function PrescriptionModal({ patientId, doctorId, token, onClose, onSuccess }) {
   const [notes,        setNotes]        = useState('')
   const showToast = useToast()
 
+  // ✅ FIXED: fetch doctor-specific medicines (own + global)
   useEffect(() => {
-    fetch(`${API}/medicines/all`, { headers: authHeaders(token) })
+    fetch(`${API}/medicines/doctor/${doctorId}`, { headers: authHeaders(token) })
       .then(r => r.json())
       .then(d => setAllMedicines(Array.isArray(d) ? d : (d.medicines || [])))
       .catch(() => {})
@@ -828,6 +836,11 @@ function PrescriptionModal({ patientId, doctorId, token, onClose, onSuccess }) {
               {dropdown.map(m => (
                 <div key={m.name} onClick={() => selectMedicine(m.name)} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}>
                   <strong>{m.name}</strong>
+                  {m.doctorId && (
+                    <span style={{ marginLeft: 6, fontSize: 10, background: '#ede9fe', color: '#7c3aed', padding: '1px 6px', borderRadius: 10 }}>
+                      My Medicine
+                    </span>
+                  )}
                   <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}> · {m.dosageForm || ''}</span>
                 </div>
               ))}
@@ -1110,12 +1123,249 @@ function IncomeMiniCards({ todayIncome, totalIncome }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   ADD MEDICINE PANEL  ✅ NEW
+   ═══════════════════════════════════════════════════════════════ */
+function AddMedicinePanel({ doctorId, token, onBack }) {
+  const [name,        setName]    = useState('')
+  const [composition, setComp]    = useState('')
+  const [dosageForm,  setForm]    = useState('Tablet')
+  const [saving,      setSaving]  = useState(false)
+  const [myMeds,      setMyMeds]  = useState([])
+  const [loadingMeds, setLoading] = useState(true)
+  const [deleting,    setDeleting]= useState(null)
+  const showToast = useToast()
+
+  const fetchMyMeds = async () => {
+    setLoading(true)
+    try {
+      const res  = await fetch(`${API}/medicines/doctor/${doctorId}`, { headers: authHeaders(token) })
+      const data = await res.json()
+      // Only show this doctor's own medicines in the list (not global ones)
+      const all  = Array.isArray(data) ? data : (data.medicines || [])
+      setMyMeds(all.filter(m => String(m.doctorId) === String(doctorId)))
+    } catch {}
+    setLoading(false)
+  }
+
+  useEffect(() => { fetchMyMeds() }, [doctorId])
+
+  const handleAdd = async () => {
+    if (!name.trim()) { showToast('Medicine name is required', 'error'); return }
+    setSaving(true)
+    try {
+      const res  = await fetch(`${API}/medicines/doctor/add`, {
+        method: 'POST',
+        headers: authHeaders(token),
+        body: JSON.stringify({ name: name.trim(), composition, dosageForm, doctorId }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        showToast(`${name} added to your medicine list ✅`, 'success')
+        setName(''); setComp(''); setForm('Tablet')
+        fetchMyMeds()
+      } else {
+        showToast(data.message || 'Failed to add', 'error')
+      }
+    } catch {
+      showToast('Server error', 'error')
+    }
+    setSaving(false)
+  }
+
+  const handleDelete = async (id, medName) => {
+    if (!window.confirm(`Remove "${medName}" from your list?`)) return
+    setDeleting(id)
+    try {
+      const res  = await fetch(`${API}/medicines/doctor/${id}`, {
+        method: 'DELETE', headers: authHeaders(token),
+      })
+      const data = await res.json()
+      if (data.success) {
+        showToast(`${medName} removed`, 'info')
+        fetchMyMeds()
+      } else {
+        showToast(data.message || 'Could not delete', 'error')
+      }
+    } catch {
+      showToast('Server error', 'error')
+    }
+    setDeleting(null)
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{
+        background: 'white', borderRadius: 14, padding: '16px 22px',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 20,
+        display: 'flex', alignItems: 'center', gap: 14,
+      }}>
+        <button
+          onClick={onBack}
+          style={{
+            background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8,
+            padding: '8px 16px', cursor: 'pointer', fontSize: 13, color: '#374151',
+            fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+          }}
+        >
+          <i className="fas fa-arrow-left"></i> Back
+        </button>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#111827' }}>
+            <i className="fas fa-pills" style={{ marginRight: 10, color: '#7c3aed' }}></i>
+            My Medicine List
+          </h2>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6b7280' }}>
+            Add medicines you prescribe — only visible on your dashboard
+          </p>
+        </div>
+      </div>
+
+      {/* Add Form */}
+      <div style={{
+        background: 'white', borderRadius: 14, padding: '20px 24px',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 20,
+      }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#374151' }}>
+          <i className="fas fa-plus-circle" style={{ marginRight: 8, color: '#7c3aed' }}></i>
+          Add New Medicine
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr', gap: 12, marginBottom: 14 }}>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+              Medicine Name *
+            </label>
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
+              placeholder="e.g. Paracetamol 500mg"
+              style={{
+                width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb',
+                borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none',
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+              Composition
+            </label>
+            <input
+              value={composition}
+              onChange={e => setComp(e.target.value)}
+              placeholder="e.g. Acetaminophen"
+              style={{
+                width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb',
+                borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none',
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+              Form
+            </label>
+            <select
+              value={dosageForm}
+              onChange={e => setForm(e.target.value)}
+              style={{
+                width: '100%', padding: '9px 10px', border: '1.5px solid #e5e7eb',
+                borderRadius: 8, fontSize: 13, color: '#374151',
+              }}
+            >
+              {['Tablet','Capsule','Syrup','Injection','Cream','Drops','Inhaler','Powder'].map(f => (
+                <option key={f}>{f}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <button
+          onClick={handleAdd}
+          disabled={saving}
+          style={{
+            background: saving ? '#94a3b8' : 'linear-gradient(135deg,#7c3aed,#2563eb)',
+            color: 'white', border: 'none', borderRadius: 8,
+            padding: '10px 24px', fontWeight: 700, fontSize: 13,
+            cursor: saving ? 'not-allowed' : 'pointer',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}
+        >
+          <i className={`fas ${saving ? 'fa-spinner fa-spin' : 'fa-plus'}`}></i>
+          {saving ? 'Adding...' : 'Add Medicine'}
+        </button>
+      </div>
+
+      {/* My Medicines List */}
+      <div style={{
+        background: 'white', borderRadius: 14, padding: '20px 24px',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0',
+      }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#374151' }}>
+          <i className="fas fa-list" style={{ marginRight: 8, color: '#2563eb' }}></i>
+          My Added Medicines ({myMeds.length})
+        </h3>
+
+        {loadingMeds ? (
+          <div style={{ textAlign: 'center', padding: 32 }}>
+            <i className="fas fa-spinner fa-spin" style={{ fontSize: 28, color: '#7c3aed' }}></i>
+          </div>
+        ) : myMeds.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
+            <i className="fas fa-pills" style={{ fontSize: 42, display: 'block', marginBottom: 14, color: '#d1d5db' }}></i>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>No medicines added yet</p>
+            <p style={{ margin: '6px 0 0', fontSize: 13 }}>Use the form above to add your first medicine</p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
+            {myMeds.map((med) => (
+              <div key={med.id} style={{
+                background: 'linear-gradient(135deg,#faf5ff,#f5f3ff)',
+                border: '1.5px solid #e9d5ff',
+                borderRadius: 12, padding: '14px 16px',
+                display: 'flex', flexDirection: 'column', gap: 8,
+                position: 'relative',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#6d28d9', flex: 1, paddingRight: 8 }}>
+                    {med.name}
+                  </div>
+                  <button
+                    onClick={() => handleDelete(med.id, med.name)}
+                    disabled={deleting === med.id}
+                    title="Remove medicine"
+                    style={{
+                      background: 'none', border: 'none', color: '#ef4444',
+                      cursor: 'pointer', fontSize: 13, padding: 2, flexShrink: 0,
+                      opacity: deleting === med.id ? 0.5 : 1,
+                    }}
+                  >
+                    <i className={`fas ${deleting === med.id ? 'fa-spinner fa-spin' : 'fa-trash'}`}></i>
+                  </button>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {med.composition && (
+                    <span style={{ fontSize: 11, color: '#7c3aed', background: '#ede9fe', padding: '2px 8px', borderRadius: 10 }}>
+                      {med.composition}
+                    </span>
+                  )}
+                  <span style={{ fontSize: 11, color: '#6b7280', background: '#f3f4f6', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>
+                    {med.dosageForm || 'Tablet'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════
    MY PATIENTS VIEW
    ═══════════════════════════════════════════════════════════════ */
 function MyPatientsView({ patients, onViewRecords, onPrescribe, onBack }) {
   return (
     <div>
-      {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24,
         background: 'white', borderRadius: 14, padding: '16px 22px',
@@ -1142,7 +1392,6 @@ function MyPatientsView({ patients, onViewRecords, onPrescribe, onBack }) {
         </div>
       </div>
 
-      {/* Empty state */}
       {patients.length === 0 ? (
         <div style={{
           textAlign: 'center', padding: '64px 24px',
@@ -1159,20 +1408,13 @@ function MyPatientsView({ patients, onViewRecords, onPrescribe, onBack }) {
         <div style={{ display: 'grid', gap: 14 }}>
           {patients.map((a, i) => (
             <div key={i} style={{
-              background: 'white',
-              border: '1.5px solid #e5e7eb',
-              borderRadius: 16,
-              padding: '18px 22px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 16,
-              boxShadow: '0 1px 6px rgba(0,0,0,0.05)',
-              transition: 'box-shadow 0.2s',
+              background: 'white', border: '1.5px solid #e5e7eb', borderRadius: 16,
+              padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 16,
+              boxShadow: '0 1px 6px rgba(0,0,0,0.05)', transition: 'box-shadow 0.2s',
             }}
               onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(37,99,235,0.1)'}
               onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 6px rgba(0,0,0,0.05)'}
             >
-              {/* Avatar */}
               <div style={{
                 width: 52, height: 52, borderRadius: '50%',
                 background: 'linear-gradient(135deg,#2563eb,#7c3aed)',
@@ -1181,8 +1423,6 @@ function MyPatientsView({ patients, onViewRecords, onPrescribe, onBack }) {
               }}>
                 {(a.patientName || 'P').charAt(0).toUpperCase()}
               </div>
-
-              {/* Info */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 4 }}>
                   {a.patientName || `Patient #${a.patientId}`}
@@ -1199,27 +1439,21 @@ function MyPatientsView({ patients, onViewRecords, onPrescribe, onBack }) {
                     </span>
                   )}
                 </div>
-                {/* Tags */}
                 <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                   <span style={{
                     fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
                     background: '#dcfce7', color: '#16a34a', border: '1px solid #86efac',
-                  }}>
-                    ✓ Completed
-                  </span>
+                  }}>✓ Completed</span>
                   {a.diagnosis && (
                     <span style={{
                       fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
                       background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe',
                     }}>
-                      <i className="fas fa-file-medical" style={{ marginRight: 3 }}></i>
-                      Record Saved
+                      <i className="fas fa-file-medical" style={{ marginRight: 3 }}></i>Record Saved
                     </span>
                   )}
                 </div>
               </div>
-
-              {/* Actions */}
               <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
                 <button
                   onClick={() => onViewRecords(a)}
@@ -1227,8 +1461,7 @@ function MyPatientsView({ patients, onViewRecords, onPrescribe, onBack }) {
                     display: 'flex', alignItems: 'center', gap: 6,
                     background: 'linear-gradient(135deg,#eff6ff,#dbeafe)',
                     color: '#1d4ed8', border: '1.5px solid #bfdbfe',
-                    borderRadius: 8, padding: '8px 14px', fontWeight: 700,
-                    fontSize: 12, cursor: 'pointer',
+                    borderRadius: 8, padding: '8px 14px', fontWeight: 700, fontSize: 12, cursor: 'pointer',
                   }}
                 >
                   <i className="fas fa-folder-open"></i> Records
@@ -1239,8 +1472,7 @@ function MyPatientsView({ patients, onViewRecords, onPrescribe, onBack }) {
                     display: 'flex', alignItems: 'center', gap: 6,
                     background: 'linear-gradient(135deg,#2563eb,#7c3aed)',
                     color: 'white', border: 'none',
-                    borderRadius: 8, padding: '8px 14px', fontWeight: 700,
-                    fontSize: 12, cursor: 'pointer',
+                    borderRadius: 8, padding: '8px 14px', fontWeight: 700, fontSize: 12, cursor: 'pointer',
                   }}
                 >
                   <i className="fas fa-prescription"></i> Prescribe
@@ -1507,10 +1739,12 @@ export default function DoctorDashboard() {
                             if (item.key === 'profile') {
                               navigate('/doctor-profile-view')
                             } else if (item.key === 'patients') {
-                              // ✅ FIX: properly set activeNav to 'patients'
                               setActiveNav('patients')
                             } else if (item.key === 'home') {
                               setActiveNav('home')
+                            } else if (item.key === 'medicines') {
+                              // ✅ NEW: navigate to medicines panel
+                              setActiveNav('medicines')
                             } else {
                               setActiveNav(item.key)
                               showToast(`${item.label} coming soon!`, 'info')
@@ -1586,7 +1820,7 @@ export default function DoctorDashboard() {
               />
             )}
 
-            {/* ✅ MY PATIENTS VIEW — shown when activeNav === 'patients' */}
+            {/* ✅ MY PATIENTS VIEW */}
             {activeNav === 'patients' && isContentVisible && (
               <MyPatientsView
                 patients={recentPatients}
@@ -1596,8 +1830,17 @@ export default function DoctorDashboard() {
               />
             )}
 
-            {/* ✅ MAIN DASHBOARD — hidden when My Patients is active */}
-            {activeNav !== 'patients' && isContentVisible && isActive && (
+            {/* ✅ MY MEDICINES PANEL — NEW */}
+            {activeNav === 'medicines' && isContentVisible && (
+              <AddMedicinePanel
+                doctorId={doctor.id}
+                token={token}
+                onBack={() => setActiveNav('home')}
+              />
+            )}
+
+            {/* ✅ MAIN DASHBOARD — hidden when sub-views are active */}
+            {activeNav !== 'patients' && activeNav !== 'medicines' && isContentVisible && isActive && (
               <PatientIncomingBanner
                 requests={requests}
                 onAccept={id => respondToRequest(id, 'accepted')}
@@ -1605,7 +1848,7 @@ export default function DoctorDashboard() {
               />
             )}
 
-            {activeNav !== 'patients' && isContentVisible && (
+            {activeNav !== 'patients' && activeNav !== 'medicines' && isContentVisible && (
               <div className={`dd-content-area${isActive ? '' : ' inactive'}`}>
                 {!isActive && (
                   <div className="dd-closed-badge">
@@ -1692,10 +1935,7 @@ export default function DoctorDashboard() {
                               <button
                                 className="btn btn-outline btn-sm"
                                 style={{ fontSize: 11, padding: '4px 10px' }}
-                                onClick={() => setPatientRecordModal({
-                                  patientId: a.patientId,
-                                  patientName: a.patientName,
-                                })}
+                                onClick={() => setPatientRecordModal({ patientId: a.patientId, patientName: a.patientName })}
                               >
                                 <i className="fas fa-folder-open" style={{ marginRight: 4 }}></i>Records
                               </button>
@@ -1710,7 +1950,6 @@ export default function DoctorDashboard() {
                           </div>
                         ))}
                       </div>
-                      {/* ✅ "View All Patients" now correctly navigates to patients view */}
                       <button
                         className="btn btn-primary btn-full"
                         style={{ marginTop: '1rem' }}
@@ -1809,6 +2048,27 @@ export default function DoctorDashboard() {
                     </div>
                   </div>
 
+                  {/* ✅ Quick Add Medicine card on dashboard */}
+                  <div className="dashboard-card">
+                    <div className="card-header">
+                      <i className="fas fa-pills" style={{ color: '#7c3aed' }}></i>
+                      <h3>My Medicines</h3>
+                    </div>
+                    <div className="card-body" style={{ textAlign: 'center', padding: '24px 16px' }}>
+                      <i className="fas fa-pills" style={{ fontSize: 36, color: '#e9d5ff', display: 'block', marginBottom: 12 }}></i>
+                      <p style={{ color: '#6b7280', fontSize: 13, margin: '0 0 16px' }}>
+                        Manage your personal medicine list used when writing prescriptions.
+                      </p>
+                      <button
+                        className="btn btn-primary btn-full"
+                        style={{ background: 'linear-gradient(135deg,#7c3aed,#2563eb)', border: 'none' }}
+                        onClick={() => setActiveNav('medicines')}
+                      >
+                        <i className="fas fa-plus"></i> Add / View Medicines
+                      </button>
+                    </div>
+                  </div>
+
                 </div>
               </div>
             )}
@@ -1836,6 +2096,7 @@ export default function DoctorDashboard() {
           onSuccess={loadPrescriptions}
         />
       )}
+
       {meetingCard && (
         <MeetingLinkCard
           link={meetingCard.link}
@@ -1843,6 +2104,7 @@ export default function DoctorDashboard() {
           onClose={() => setMeetingCard(null)}
         />
       )}
+
       <Toast />
     </div>
   )
