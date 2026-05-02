@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import MyAppointmentsView from '../components/MyAppointmentsView'
 import { useAuth } from '../context/AuthContext'
 import ViewPrescriptionModal from '../components/ViewPrescriptionModal'
 import { Toast } from '../components/Toast'
@@ -42,7 +43,7 @@ const RECORDS = [
   { icon: 'fa-file-medical-alt', title: 'Health Certificate', date: 'Oct 05, 2023' },
 ]
 
-const PROGRESS_STEPS  = ['Consulted', 'Prescribed', 'In Treatment', 'Complete']
+const PROGRESS_STEPS   = ['Consulted', 'Prescribed', 'In Treatment', 'Complete']
 const FOLLOWUP_DETAILS = [
   { icon: 'fa-user-md',   label: 'Doctor',      value: 'Dr. Sarah Johnson'    },
   { icon: 'fa-calendar',  label: 'Next Visit',  value: 'January 25, 2024'     },
@@ -50,7 +51,7 @@ const FOLLOWUP_DETAILS = [
   { icon: 'fa-pills',     label: 'Medications', value: '3 prescribed'         },
 ]
 
-/* ─── Speciality cards with specialization mapping ──────────── */
+/* ─── Speciality cards ──────────────────────────────────────── */
 const CONSULT_SPECIALITIES = [
   { label: 'Period doubts or Pregnancy',  icon: 'fa-venus',           color: '#f9a8d4', spec: 'Gynaecologist'     },
   { label: 'Acne, pimple or skin issues', icon: 'fa-face-meh',        color: '#fcd34d', spec: 'Dermatologist'     },
@@ -61,7 +62,7 @@ const CONSULT_SPECIALITIES = [
 ]
 
 /* ═══════════════════════════════════════════════════════════════
-   DOCTOR CARD — used in both "Find Doctors" modal and Telemedicine
+   DOCTOR CARD
    ═══════════════════════════════════════════════════════════════ */
 export function DoctorCard({ doc, onBook }) {
   const isApproved = doc.verificationStatus === 'approved'
@@ -81,7 +82,6 @@ export function DoctorCard({ doc, onBook }) {
       position: 'relative',
       boxShadow: isApproved ? '0 2px 12px rgba(0,179,134,0.08)' : 'none',
     }}>
-      {/* Avatar */}
       <div style={{ position: 'relative', flexShrink: 0 }}>
         {doc.photoUrl ? (
           <img src={doc.photoUrl} alt={doc.name}
@@ -105,7 +105,6 @@ export function DoctorCard({ doc, onBook }) {
         }} />
       </div>
 
-      {/* Info */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
           <span style={{ fontWeight: 700, fontSize: 15, color: isApproved ? '#111827' : '#6b7280' }}>
@@ -269,8 +268,8 @@ function DoctorsModal({ onClose, token, onBook }) {
 
         <div style={{ padding: '0 24px 12px', display: 'flex', gap: 20, flexShrink: 0 }}>
           {[
-            { color: '#10b981', label: 'Active (Approved)' },
-            { color: '#9ca3af', label: 'Inactive (Pending / Rejected)' },
+            { color: '#10b981', label: 'Active (Approved)'          },
+            { color: '#9ca3af', label: 'Inactive (Pending/Rejected)' },
           ].map(l => (
             <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6b7280' }}>
               <span style={{ width: 10, height: 10, borderRadius: '50%', background: l.color, display: 'inline-block' }}></span>
@@ -362,21 +361,19 @@ export default function PatientDashboard() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // ✅ CHANGE 1: loadAppointments — counts unique doctors from ALL approved appointments
   async function loadAppointments() {
     try {
       const res  = await fetch(`${API}/appointments/patient/${currentUser.id}`, { headers: authHeaders(token) })
       const data = await res.json()
       if (!data.success || !data.appointments?.length) return
 
-      const all      = data.appointments
-      const now      = new Date()
+      const all = data.appointments
+      const now = new Date()
 
       const approved = all.filter(a =>  a.doctorApproved && new Date(a.appointmentTime) > now && a.status === 'scheduled')
       const pending  = all.filter(a => !a.doctorApproved && new Date(a.appointmentTime) > now && a.status === 'scheduled')
       const expired  = all.filter(a => !a.doctorApproved && new Date(a.appointmentTime) <= now)
 
-      // ✅ Count unique doctors from ALL approved appointments (not just upcoming)
       const allApproved   = all.filter(a => a.doctorApproved)
       const uniqueDoctors = [...new Set(allApproved.map(a => a.doctorId))].length
 
@@ -385,12 +382,11 @@ export default function PatientDashboard() {
     } catch (err) { console.error(err) }
   }
 
-  // ✅ CHANGE 2: loadPrescriptions — merges appointment data (diagnosis, tests, followUpDate) into each prescription
   async function loadPrescriptions() {
     try {
       const [rxRes, apptRes] = await Promise.all([
         fetch(`${API}/prescriptions/patient/${currentUser.id}`, { headers: authHeaders(token) }),
-        fetch(`${API}/appointments/patient/${currentUser.id}`, { headers: authHeaders(token) }),
+        fetch(`${API}/appointments/patient/${currentUser.id}`,  { headers: authHeaders(token) }),
       ])
       const rxData   = await rxRes.json()
       const apptData = await apptRes.json()
@@ -398,7 +394,6 @@ export default function PatientDashboard() {
       if (rxData.success && rxData.prescriptions?.length) {
         const allAppts = apptData.appointments || []
 
-        // ✅ Merge diagnosis/tests/followUp from the linked appointment into each prescription
         const enriched = rxData.prescriptions.map(rx => {
           const linkedAppt = allAppts.find(a => a.id === rx.appointmentId)
           return {
@@ -407,9 +402,8 @@ export default function PatientDashboard() {
             tests:                linkedAppt?.tests                || null,
             followUpDate:         linkedAppt?.followUpDate         || null,
             followUpInstructions: linkedAppt?.followUpInstructions || null,
-            // doctor name from appointment's included doctor object
-            doctorName: rx.doctorName || linkedAppt?.doctor?.name || null,
-            department:  rx.department || linkedAppt?.doctor?.specialization || null,
+            doctorName:           rx.doctorName || linkedAppt?.doctor?.name           || null,
+            department:           rx.department || linkedAppt?.doctor?.specialization || null,
           }
         })
 
@@ -441,20 +435,12 @@ export default function PatientDashboard() {
     }
   }
 
-  const handleBookDoctor = (doc) => {
-    setDoctorsModal(false)
-    navigate('/telemedicine', { state: { selectedDoctor: doc } })
-  }
-
+  const handleBookDoctor  = (doc) => { setDoctorsModal(false); navigate('/telemedicine', { state: { selectedDoctor: doc } }) }
   const handleOfferingClick = (key) => {
     if      (key === 'doctors') setDoctorsModal(true)
     else if (key === 'video')   navigate('/telemedicine')
   }
-
-  // ✅ Navigate to telemedicine with specialization filter pre-applied
-  const handleConsultNow = (spec) => {
-    navigate('/telemedicine', { state: { filterSpec: spec } })
-  }
+  const handleConsultNow = (spec) => navigate('/telemedicine', { state: { filterSpec: spec } })
 
   const now      = new Date()
   const initials = currentUser?.name
@@ -560,7 +546,7 @@ export default function PatientDashboard() {
         <div className="pd-main">
           <main className="pd-body">
 
-            {/* Quick Stats */}
+            {/* Quick Stats — always visible */}
             <div className="pd-stats">
               {[
                 { icon: 'fa-calendar-check',      cls: '--blue',   num: stats.upcoming,      label: 'Upcoming Appointments' },
@@ -578,275 +564,275 @@ export default function PatientDashboard() {
               ))}
             </div>
 
-            {/* Our Offerings */}
-            <div className="pd-offerings">
-              <div className="pd-section-header">
-                <div><h2>Our Offerings</h2><p>Everything you need for your health in one place</p></div>
-              </div>
-              <div className="pd-offerings-grid">
-                {OFFERINGS.map(o => (
-                  <div
-                    className="pd-offering-card" key={o.label}
-                    onClick={() => handleOfferingClick(o.key)}
-                    style={{ cursor: (o.key === 'doctors' || o.key === 'video') ? 'pointer' : 'default' }}
-                  >
-                    <div className="pd-offering-card__icon" style={{ background: o.color + '1a', color: o.color }}>
-                      <i className={`fas ${o.icon}`}></i>
-                    </div>
-                    <h4>{o.label}</h4>
-                    <p>{o.sub}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+            {/* ══ MY APPOINTMENTS VIEW ══ */}
+            {activeNav === 'appointments' && (
+              <MyAppointmentsView currentUser={currentUser} token={token} />
+            )}
 
-            {/* ══ Consult Specialities ══ */}
-            <div className="consult-section-wrapper">
-              <section className="consult-section">
-                <div className="consult-header">
-                  <div>
-                    <h2>Consult top doctors online for any health concern</h2>
-                    <p>Private online consultations with verified doctors in all specialists</p>
+            {/* ══ HOME DASHBOARD ══ */}
+            {activeNav === 'home' && (
+              <>
+                {/* Our Offerings */}
+                <div className="pd-offerings">
+                  <div className="pd-section-header">
+                    <div><h2>Our Offerings</h2><p>Everything you need for your health in one place</p></div>
                   </div>
-                  {/* ✅ View All → goes to telemedicine with no filter */}
-                  <button
-                    className="btn-view-all"
-                    onClick={() => navigate('/telemedicine')}
-                  >
-                    View All Specialities
-                  </button>
-                </div>
-                <div className="consult-grid">
-                  {CONSULT_SPECIALITIES.map((item, i) => (
-                    <div className="consult-card" key={i}>
-                      <div className="consult-img-wrap" style={{ background: item.color + '33' }}>
-                        <i className={`fas ${item.icon}`} style={{ fontSize: 36, color: item.color }}></i>
-                      </div>
-                      <p>{item.label}</p>
-                      {/* ✅ CONSULT NOW navigates to telemedicine with filterSpec in state */}
-                      <button
-                        className="consult-now-btn"
-                        onClick={() => handleConsultNow(item.spec)}
+                  <div className="pd-offerings-grid">
+                    {OFFERINGS.map(o => (
+                      <div
+                        className="pd-offering-card" key={o.label}
+                        onClick={() => handleOfferingClick(o.key)}
+                        style={{ cursor: (o.key === 'doctors' || o.key === 'video') ? 'pointer' : 'default' }}
                       >
-                        CONSULT NOW
+                        <div className="pd-offering-card__icon" style={{ background: o.color + '1a', color: o.color }}>
+                          <i className={`fas ${o.icon}`}></i>
+                        </div>
+                        <h4>{o.label}</h4>
+                        <p>{o.sub}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Consult Specialities */}
+                <div className="consult-section-wrapper">
+                  <section className="consult-section">
+                    <div className="consult-header">
+                      <div>
+                        <h2>Consult top doctors online for any health concern</h2>
+                        <p>Private online consultations with verified doctors in all specialists</p>
+                      </div>
+                      <button className="btn-view-all" onClick={() => navigate('/telemedicine')}>
+                        View All Specialities
                       </button>
                     </div>
-                  ))}
-                </div>
-              </section>
-            </div>
-
-            {/* Dashboard Cards Grid */}
-            <div className="pd-grid">
-
-              {/* Upcoming Appointments */}
-              <div className="pd-card">
-                <div className="pd-card__head">
-                  <div className="pd-card__head-icon"><i className="fas fa-calendar-alt"></i></div>
-                  <h3>Upcoming Appointments</h3>
-                </div>
-                <div className="pd-card__body">
-                  {!appointments.approved.length && !appointments.pending.length && (
-                    <div className="pd-empty"><i className="fas fa-calendar-times"></i> No upcoming appointments</div>
-                  )}
-
-                  {/* ✅ CHANGE 3: Approved appointments render block — shows doctor name, follow-up, and diagnosis */}
-                  {appointments.approved.map((apt, i) => {
-                    const d             = new Date(apt.appointmentTime)
-                    const diffMin       = (d - now) / 60000
-                    const joinAvailable = apt.meetingLink && diffMin <= 30 && diffMin >= -60
-                    return (
-                      <div className="pd-appt-item" key={i}>
-                        <div className="pd-appt-date">
-                          <span className="day">{d.getDate()}</span>
-                          <span className="month">{d.toLocaleString('en-US', { month: 'short' })}</span>
+                    <div className="consult-grid">
+                      {CONSULT_SPECIALITIES.map((item, i) => (
+                        <div className="consult-card" key={i}>
+                          <div className="consult-img-wrap" style={{ background: item.color + '33' }}>
+                            <i className={`fas ${item.icon}`} style={{ fontSize: 36, color: item.color }}></i>
+                          </div>
+                          <p>{item.label}</p>
+                          <button className="consult-now-btn" onClick={() => handleConsultNow(item.spec)}>
+                            CONSULT NOW
+                          </button>
                         </div>
-                        <div className="pd-appt-info">
-                          <h4>Confirmed Appointment</h4>
-                          {/* ✅ Doctor name with specialization */}
-                          <p>
-                            {apt.doctor?.name ? `Dr. ${apt.doctor.name}` : `Dr. #${apt.doctorId}`}
-                            {apt.doctor?.specialization ? ` · ${apt.doctor.specialization}` : ''}
-                            {' · '}{formatTime(apt.appointmentTime)}
-                          </p>
-                          <span className="badge badge--green">✅ Approved</span>
-
-                          {/* ✅ Show follow-up if set by doctor */}
-                          {apt.followUpDate && (
-                            <p style={{ fontSize: 11, color: '#10b981', marginTop: 4, fontWeight: 600 }}>
-                              <i className="fas fa-calendar-alt" style={{ marginRight: 4 }}></i>
-                              Follow-up: {formatDate(apt.followUpDate)}
-                              {apt.followUpInstructions && ` — ${apt.followUpInstructions}`}
-                            </p>
-                          )}
-
-                          {/* ✅ Show diagnosis if doctor saved it */}
-                          {apt.diagnosis && (
-                            <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
-                              <i className="fas fa-stethoscope" style={{ marginRight: 4, color: '#2563eb' }}></i>
-                              {apt.diagnosis}
-                            </p>
-                          )}
-
-                          {joinAvailable ? (
-                            <a href={apt.meetingLink} target="_blank" rel="noopener noreferrer" className="pd-video-link">
-                              <i className="fas fa-video"></i> Join Video Call
-                            </a>
-                          ) : apt.meetingLink ? (
-                            <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 6 }}>
-                              Video link ready · available 30 min before
-                            </p>
-                          ) : null}
-                        </div>
-                      </div>
-                    )
-                  })}
-
-                  {appointments.pending.map((apt, i) => {
-                    const d = new Date(apt.appointmentTime)
-                    return (
-                      <div className="pd-appt-item" key={`p-${i}`} style={{ opacity: 0.8 }}>
-                        <div className="pd-appt-date">
-                          <span className="day">{d.getDate()}</span>
-                          <span className="month">{d.toLocaleString('en-US', { month: 'short' })}</span>
-                        </div>
-                        <div className="pd-appt-info">
-                          <h4>Appointment Request</h4>
-                          <p>Doctor #{apt.doctorId} · {formatTime(apt.appointmentTime)}</p>
-                          <span className="badge badge--yellow">⏳ Awaiting Approval</span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                  {appointments.expired.length > 0 && (
-                    <div className="pd-expired-notice">
-                      <i className="fas fa-exclamation-circle"></i>
-                      {appointments.expired.length} past request{appointments.expired.length > 1 ? 's' : ''} expired. Please book a new appointment.
+                      ))}
                     </div>
-                  )}
+                  </section>
                 </div>
-                <div className="pd-card__footer">
-                  <button className="pd-btn pd-btn--primary pd-btn--full" onClick={() => setAppointmentModal(true)}>
-                    <i className="fas fa-calendar-plus"></i> Book New Appointment
-                  </button>
-                </div>
-              </div>
 
-              {/* Past Prescriptions */}
-              <div className="pd-card">
-                <div className="pd-card__head">
-                  <div className="pd-card__head-icon"><i className="fas fa-prescription-bottle-alt"></i></div>
-                  <h3>Past Prescriptions</h3>
-                </div>
-                <div className="pd-card__body">
-                  {prescriptions.length === 0 && (
-                    <div className="pd-empty"><i className="fas fa-file-prescription"></i> No prescriptions yet</div>
-                  )}
-                  {prescriptions.map((p, i) => (
-                    <div className="pd-rx-item" key={i}>
-                      <div className="pd-rx-avatar"><i className="fas fa-user-md"></i></div>
-                      <div className="pd-rx-info">
-                        <h4>{p.doctorName || `Dr. #${p.doctorId || '-'}`}</h4>
-                        <p>{p.department || 'General'}</p>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                        <span className="pd-rx-date">{formatDate(p.createdAt)}</span>
-                        <button className="pd-btn pd-btn--outline pd-btn--sm" onClick={() => setViewPrescription(p)}>View</button>
+                {/* Dashboard Cards Grid */}
+                <div className="pd-grid">
+
+                  {/* Upcoming Appointments */}
+                  <div className="pd-card">
+                    <div className="pd-card__head">
+                      <div className="pd-card__head-icon"><i className="fas fa-calendar-alt"></i></div>
+                      <h3>Upcoming Appointments</h3>
+                    </div>
+                    <div className="pd-card__body">
+                      {!appointments.approved.length && !appointments.pending.length && (
+                        <div className="pd-empty"><i className="fas fa-calendar-times"></i> No upcoming appointments</div>
+                      )}
+
+                      {appointments.approved.map((apt, i) => {
+                        const d             = new Date(apt.appointmentTime)
+                        const diffMin       = (d - now) / 60000
+                        const joinAvailable = apt.meetingLink && diffMin <= 30 && diffMin >= -60
+                        return (
+                          <div className="pd-appt-item" key={i}>
+                            <div className="pd-appt-date">
+                              <span className="day">{d.getDate()}</span>
+                              <span className="month">{d.toLocaleString('en-US', { month: 'short' })}</span>
+                            </div>
+                            <div className="pd-appt-info">
+                              <h4>Confirmed Appointment</h4>
+                              <p>
+                                {apt.doctor?.name ? `Dr. ${apt.doctor.name}` : `Dr. #${apt.doctorId}`}
+                                {apt.doctor?.specialization ? ` · ${apt.doctor.specialization}` : ''}
+                                {' · '}{formatTime(apt.appointmentTime)}
+                              </p>
+                              <span className="badge badge--green">✅ Approved</span>
+
+                              {apt.followUpDate && (
+                                <p style={{ fontSize: 11, color: '#10b981', marginTop: 4, fontWeight: 600 }}>
+                                  <i className="fas fa-calendar-alt" style={{ marginRight: 4 }}></i>
+                                  Follow-up: {formatDate(apt.followUpDate)}
+                                  {apt.followUpInstructions && ` — ${apt.followUpInstructions}`}
+                                </p>
+                              )}
+
+                              {apt.diagnosis && (
+                                <p style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                                  <i className="fas fa-stethoscope" style={{ marginRight: 4, color: '#2563eb' }}></i>
+                                  {apt.diagnosis}
+                                </p>
+                              )}
+
+                              {joinAvailable ? (
+                                <a href={apt.meetingLink} target="_blank" rel="noopener noreferrer" className="pd-video-link">
+                                  <i className="fas fa-video"></i> Join Video Call
+                                </a>
+                              ) : apt.meetingLink ? (
+                                <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 6 }}>
+                                  Video link ready · available 30 min before
+                                </p>
+                              ) : null}
+                            </div>
+                          </div>
+                        )
+                      })}
+
+                      {appointments.pending.map((apt, i) => {
+                        const d = new Date(apt.appointmentTime)
+                        return (
+                          <div className="pd-appt-item" key={`p-${i}`} style={{ opacity: 0.8 }}>
+                            <div className="pd-appt-date">
+                              <span className="day">{d.getDate()}</span>
+                              <span className="month">{d.toLocaleString('en-US', { month: 'short' })}</span>
+                            </div>
+                            <div className="pd-appt-info">
+                              <h4>Appointment Request</h4>
+                              <p>Doctor #{apt.doctorId} · {formatTime(apt.appointmentTime)}</p>
+                              <span className="badge badge--yellow">⏳ Awaiting Approval</span>
+                            </div>
+                          </div>
+                        )
+                      })}
+
+                      {appointments.expired.length > 0 && (
+                        <div className="pd-expired-notice">
+                          <i className="fas fa-exclamation-circle"></i>
+                          {appointments.expired.length} past request{appointments.expired.length > 1 ? 's' : ''} expired. Please book a new appointment.
+                        </div>
+                      )}
+                    </div>
+                    <div className="pd-card__footer">
+                      <button className="pd-btn pd-btn--primary pd-btn--full" onClick={() => setAppointmentModal(true)}>
+                        <i className="fas fa-calendar-plus"></i> Book New Appointment
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Past Prescriptions */}
+                  <div className="pd-card">
+                    <div className="pd-card__head">
+                      <div className="pd-card__head-icon"><i className="fas fa-prescription-bottle-alt"></i></div>
+                      <h3>Past Prescriptions</h3>
+                    </div>
+                    <div className="pd-card__body">
+                      {prescriptions.length === 0 && (
+                        <div className="pd-empty"><i className="fas fa-file-prescription"></i> No prescriptions yet</div>
+                      )}
+                      {prescriptions.map((p, i) => (
+                        <div className="pd-rx-item" key={i}>
+                          <div className="pd-rx-avatar"><i className="fas fa-user-md"></i></div>
+                          <div className="pd-rx-info">
+                            <h4>{p.doctorName || `Dr. #${p.doctorId || '-'}`}</h4>
+                            <p>{p.department || 'General'}</p>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                            <span className="pd-rx-date">{formatDate(p.createdAt)}</span>
+                            <button className="pd-btn pd-btn--outline pd-btn--sm" onClick={() => setViewPrescription(p)}>View</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Current Symptoms */}
+                  <div className="pd-card">
+                    <div className="pd-card__head">
+                      <div className="pd-card__head-icon"><i className="fas fa-thermometer-half"></i></div>
+                      <h3>Current Symptoms</h3>
+                    </div>
+                    <div className="pd-card__body">
+                      {[
+                        { name: 'Fever & Cold', date: 'Jan 15, 2024', status: 'pending'  },
+                        { name: 'Headache',     date: 'Jan 14, 2024', status: 'resolved' },
+                      ].map(s => (
+                        <div className="pd-symptom-item" key={s.name}>
+                          <div className={`pd-symptom-dot pd-symptom-dot--${s.status}`}></div>
+                          <div className="pd-symptom-info"><h4>{s.name}</h4><p>Reported: {s.date}</p></div>
+                          <span className={`badge ${s.status === 'pending' ? 'badge--yellow' : 'badge--green'}`}>
+                            {s.status === 'pending' ? 'Under Review' : 'Resolved'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="pd-card__footer">
+                      <button className="pd-btn pd-btn--outline pd-btn--full"><i className="fas fa-plus"></i> Report New Symptom</button>
+                    </div>
+                  </div>
+
+                  {/* Follow-up History */}
+                  <div className="pd-card">
+                    <div className="pd-card__head">
+                      <div className="pd-card__head-icon"><i className="fas fa-history"></i></div>
+                      <h3>Follow-Up History</h3>
+                    </div>
+                    <div className="pd-card__body">
+                      <div className="pd-timeline">
+                        {HISTORY.map((item, i) => (
+                          <div className="pd-timeline-item" key={i}>
+                            <h4>{item.title}</h4><p>{item.date}</p>
+                            <span className="doctor">{item.doctor}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
 
-              {/* Current Symptoms */}
-              <div className="pd-card">
-                <div className="pd-card__head">
-                  <div className="pd-card__head-icon"><i className="fas fa-thermometer-half"></i></div>
-                  <h3>Current Symptoms</h3>
-                </div>
-                <div className="pd-card__body">
-                  {[
-                    { name: 'Fever & Cold', date: 'Jan 15, 2024', status: 'pending'  },
-                    { name: 'Headache',     date: 'Jan 14, 2024', status: 'resolved' },
-                  ].map(s => (
-                    <div className="pd-symptom-item" key={s.name}>
-                      <div className={`pd-symptom-dot pd-symptom-dot--${s.status}`}></div>
-                      <div className="pd-symptom-info"><h4>{s.name}</h4><p>Reported: {s.date}</p></div>
-                      <span className={`badge ${s.status === 'pending' ? 'badge--yellow' : 'badge--green'}`}>
-                        {s.status === 'pending' ? 'Under Review' : 'Resolved'}
-                      </span>
+                  {/* Current Follow-Up Status */}
+                  <div className="pd-card pd-card--wide">
+                    <div className="pd-card__head">
+                      <div className="pd-card__head-icon"><i className="fas fa-calendar-check"></i></div>
+                      <h3>Current Follow-Up Status</h3>
                     </div>
-                  ))}
-                </div>
-                <div className="pd-card__footer">
-                  <button className="pd-btn pd-btn--outline pd-btn--full"><i className="fas fa-plus"></i> Report New Symptom</button>
-                </div>
-              </div>
-
-              {/* Follow-up History */}
-              <div className="pd-card">
-                <div className="pd-card__head">
-                  <div className="pd-card__head-icon"><i className="fas fa-history"></i></div>
-                  <h3>Follow-Up History</h3>
-                </div>
-                <div className="pd-card__body">
-                  <div className="pd-timeline">
-                    {HISTORY.map((item, i) => (
-                      <div className="pd-timeline-item" key={i}>
-                        <h4>{item.title}</h4><p>{item.date}</p>
-                        <span className="doctor">{item.doctor}</span>
+                    <div className="pd-card__body">
+                      <div className="pd-followup-progress">
+                        {PROGRESS_STEPS.map((label, i) => (
+                          <div key={label} className={`pd-progress-step${i < 3 ? (i < 2 ? ' done' : ' active') : ''}`}>
+                            <div className="pd-progress-step__dot"><i className={`fas ${i < 2 ? 'fa-check' : 'fa-circle'}`}></i></div>
+                            <span>{label}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Current Follow-Up Status */}
-              <div className="pd-card pd-card--wide">
-                <div className="pd-card__head">
-                  <div className="pd-card__head-icon"><i className="fas fa-calendar-check"></i></div>
-                  <h3>Current Follow-Up Status</h3>
-                </div>
-                <div className="pd-card__body">
-                  <div className="pd-followup-progress">
-                    {PROGRESS_STEPS.map((label, i) => (
-                      <div key={label} className={`pd-progress-step${i < 3 ? (i < 2 ? ' done' : ' active') : ''}`}>
-                        <div className="pd-progress-step__dot"><i className={`fas ${i < 2 ? 'fa-check' : 'fa-circle'}`}></i></div>
-                        <span>{label}</span>
+                      <div className="pd-followup-details">
+                        {FOLLOWUP_DETAILS.map(d => (
+                          <div className="pd-detail-row" key={d.label}>
+                            <i className={`fas ${d.icon}`}></i>
+                            <div><strong>{d.label}</strong><span>{d.value}</span></div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
                   </div>
-                  <div className="pd-followup-details">
-                    {FOLLOWUP_DETAILS.map(d => (
-                      <div className="pd-detail-row" key={d.label}>
-                        <i className={`fas ${d.icon}`}></i>
-                        <div><strong>{d.label}</strong><span>{d.value}</span></div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
 
-              {/* Medical Records */}
-              <div className="pd-card pd-card--wide">
-                <div className="pd-card__head">
-                  <div className="pd-card__head-icon"><i className="fas fa-folder-open"></i></div>
-                  <h3>Medical Records</h3>
-                </div>
-                <div className="pd-card__body">
-                  <div className="pd-records-grid">
-                    {RECORDS.map(r => (
-                      <div className="pd-record-item" key={r.title}>
-                        <i className={`fas ${r.icon}`}></i>
-                        <h4>{r.title}</h4><p>{r.date}</p>
-                        <button className="pd-btn pd-btn--outline pd-btn--sm">Download</button>
+                  {/* Medical Records */}
+                  <div className="pd-card pd-card--wide">
+                    <div className="pd-card__head">
+                      <div className="pd-card__head-icon"><i className="fas fa-folder-open"></i></div>
+                      <h3>Medical Records</h3>
+                    </div>
+                    <div className="pd-card__body">
+                      <div className="pd-records-grid">
+                        {RECORDS.map(r => (
+                          <div className="pd-record-item" key={r.title}>
+                            <i className={`fas ${r.icon}`}></i>
+                            <h4>{r.title}</h4><p>{r.date}</p>
+                            <button className="pd-btn pd-btn--outline pd-btn--sm">Download</button>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
                   </div>
-                </div>
-              </div>
 
-            </div>{/* end pd-grid */}
+                </div>{/* end pd-grid */}
+              </>
+            )}
+
           </main>
         </div>
       </div>
@@ -891,7 +877,12 @@ export default function PatientDashboard() {
       )}
 
       {/* ── View Prescription Modal ── */}
-      {viewPrescription && <ViewPrescriptionModal prescription={viewPrescription} onClose={() => setViewPrescription(null)} />}
+      {viewPrescription && (
+        <ViewPrescriptionModal
+          prescription={viewPrescription}
+          onClose={() => setViewPrescription(null)}
+        />
+      )}
 
       <Toast />
     </div>

@@ -46,14 +46,42 @@ const Appointment = sequelize.define("Appointment", {
 
   doctorApproved: {
     type: DataTypes.BOOLEAN,
-    defaultValue: false, // false = pending, true = approved
+    defaultValue: false,
     allowNull: false,
   },
+
+  // ✅ Doctor saves these when completing a consultation
+  diagnosis: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+
+  doctorNotes: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+
+  // Stored as JSON array: [{ name: 'CBC', type: 'Pathology' }, ...]
+  tests: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
+
+  followUpDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+  },
+
+  followUpInstructions: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+
 }, {
   timestamps: true,
 });
 
-// ✅ Associations — call this from your app.js / index.js after all models are loaded
+// ✅ Associations — called from app.js after all models are loaded
 Appointment.associate = (models) => {
   Appointment.belongsTo(models.User,   { foreignKey: "patientId", as: "patient" });
   Appointment.belongsTo(models.Doctor, { foreignKey: "doctorId",  as: "doctor"  });
