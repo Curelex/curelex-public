@@ -273,7 +273,7 @@ export default function DoctorProfileView() {
             {editing ? 'Edit Profile Information' : 'Profile Information'}
           </h2>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
             {[
               { label: 'Full Name',             key: 'name',               icon: 'fa-user',           type: 'text'   },
               { label: 'Email',                 key: 'email',              icon: 'fa-envelope',       type: 'email'  },

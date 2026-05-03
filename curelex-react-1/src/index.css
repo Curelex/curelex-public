@@ -1074,25 +1074,48 @@ section {
 
 .modal-close {
     position: absolute;
-    top: 1.25rem;
-    right: 1.25rem;
-    width: 38px;
-    height: 38px;
+    top: 1rem;
+    right: 1rem;
+
+    width: 44px;
+    height: 44px;
+
     background: var(--bg-secondary);
-    border-radius: var(--radius-full);
+    border-radius: 50%;
+
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
-    color: var(--text-secondary);
+
+    font-size: 1.8rem; /* bigger × */
+    line-height: 1;
+
+    color: var(--text-primary);
+
     transition: all var(--transition-fast);
     border: 2px solid transparent;
+
+    z-index: 10; /* prevents weird overlap issues */
 }
 
 .modal-close:hover {
     background: var(--accent-color);
     color: var(--text-inverse);
     transform: rotate(90deg);
+}
+
+@media (max-width: 640px) {
+    .modal-close {
+        top: 0.5rem;
+        right: 0.5rem;
+        width: 40px;
+        height: 40px;
+        font-size: 1.5rem;
+    }
+
+    .auth-header {
+        padding-right: 3rem; /* prevents text overlap */
+    }
 }
 
 /* =============================================
@@ -2562,6 +2585,17 @@ section {
         display: flex;
     }
     
+    .modal-close {
+        top: 0.5rem;
+        right: 0.5rem;
+        width: 40px;
+        height: 40px;
+        font-size: 1.5rem;
+    }
+
+    .auth-header {
+        padding-right: 3rem; /* prevents overlap */
+    }
     /* Show theme toggle in navbar on mobile */
     .nav-actions .theme-toggle {
         display: none;
@@ -5743,3 +5777,118 @@ body {
     margin-bottom: 10px !important;
   }
 }
+
+
+.auth-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 20px 0;
+    width: 100%;
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 500;
+    position: relative;
+  }
+  
+  .auth-divider::before,
+  .auth-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #e5e7eb);
+  }
+  
+  .auth-divider::after {
+    background: linear-gradient(to left, transparent, #e5e7eb);
+  }
+  
+  .auth-divider span {
+    padding: 0 12px;
+    white-space: nowrap;
+    background: #fff; /* important if divider is over card */
+  }
+
+/* ================= DOCTOR PROFILE RESPONSIVE ================= */
+
+.doctor-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 16px;
+}
+
+.doctor-profile-card {
+    display: flex;
+    gap: 28px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.doctor-stats {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+/* ---------------- MOBILE ---------------- */
+@media (max-width: 768px) {
+
+    .doctor-container {
+        padding: 20px 12px;
+    }
+
+    .doctor-profile-card {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .doctor-profile-card img,
+    .doctor-profile-card div:first-child {
+        margin-bottom: 10px;
+    }
+
+    .doctor-stats {
+        justify-content: center;
+        gap: 16px;
+    }
+
+    .doctor-stats div {
+        min-width: 80px;
+    }
+
+    /* Header buttons fix */
+    header {
+        flex-direction: column;
+        height: auto !important;
+        gap: 10px;
+        padding: 10px !important;
+    }
+
+    header > div:last-child {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    /* Form grid fix */
+    .doctor-form-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* ---------------- SMALL MOBILE ---------------- */
+@media (max-width: 480px) {
+
+    .doctor-profile-card {
+        gap: 16px;
+    }
+
+    h1 {
+        font-size: 20px !important;
+    }
+
+    .doctor-stats div {
+        font-size: 12px;
+    }
+}
+

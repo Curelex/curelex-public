@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Toast, useToast } from '../components/Toast';
 import { authAPI } from '../api/auth';
 
+
 const Home = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -410,23 +411,50 @@ const Home = () => {
         <div className="modal active" id="roleSelectionModal">
           <div className="modal-overlay" onClick={() => setShowRoleModal(false)}></div>
           <div className="modal-container modal-small">
-            <button className="modal-close" onClick={() => setShowRoleModal(false)}>&times;</button>
-            <div className="auth-header">
-              <h2>Select Login Type</h2>
-              <p>Choose your account type to proceed</p>
-            </div>
-            <div className="role-selection">
-              <button className="role-card" onClick={() => { setShowRoleModal(false); setShowLoginModal(true); setActiveTab('patient-login'); }}>
-                <div className="role-icon"><i className="fas fa-user-injured"></i></div>
-                <h3>Patient</h3><p>Access your health records and connect with doctors</p>
-              </button>
-              <button className="role-card" onClick={() => { setShowRoleModal(false); setShowLoginModal(true); setActiveTab('doctor-login'); }}>
-                <div className="role-icon"><i className="fas fa-user-md"></i></div>
-                <h3>Doctor</h3><p>Manage appointments and patient consultations</p>
-              </button>
-            </div>
-            
-          </div>
+
+{/* HEADER ROW */}
+<div className="flex items-center justify-between mb-4">
+<button className="modal-close" onClick={() => setShowRoleModal(false)}>&times;</button>
+  <div className="auth-header !mb-0">
+    <h2>Select Login Type</h2>
+    <p>Choose your account type to proceed</p>
+  </div>
+</div>
+
+{/* ROLE CARDS */}
+<div className="role-selection">
+  <button
+    className="role-card"
+    onClick={() => {
+      setShowRoleModal(false)
+      setShowLoginModal(true)
+      setActiveTab('patient-login')
+    }}
+  >
+    <div className="role-icon">
+      <i className="fas fa-user-injured"></i>
+    </div>
+    <h3>Patient</h3>
+    <p>Access your health records and connect with doctors</p>
+  </button>
+
+  <button
+    className="role-card"
+    onClick={() => {
+      setShowRoleModal(false)
+      setShowLoginModal(true)
+      setActiveTab('doctor-login')
+    }}
+  >
+    <div className="role-icon">
+      <i className="fas fa-user-md"></i>
+    </div>
+    <h3>Doctor</h3>
+    <p>Manage appointments and patient consultations</p>
+  </button>
+</div>
+
+</div>
         </div>
       )}
 
@@ -434,12 +462,30 @@ const Home = () => {
       {showLoginModal && (
         <div className="modal active" id="loginModal">
           <div className="modal-overlay" onClick={() => setShowLoginModal(false)}></div>
-          <div className="modal-container">
-            <button className="modal-close" onClick={() => setShowLoginModal(false)}>&times;</button>
-            <div className="auth-tabs">
-              <button className={`auth-tab ${activeTab === 'patient-login' ? 'active' : ''}`} onClick={() => setActiveTab('patient-login')}>Patient</button>
-              <button className={`auth-tab ${activeTab === 'doctor-login' ? 'active' : ''}`} onClick={() => setActiveTab('doctor-login')}>Doctor</button>
-            </div>
+          <div className="modal-container relative">
+          <button
+    onClick={() => setShowLoginModal(false)}
+    className="absolute left-4 top-4 text-gray-600 text-xl z-10"
+  >
+    <i className="fas fa-arrow-left"></i>
+  </button>
+
+  {/* TABS */}
+  <div className="auth-tabs pl-10">
+    <button
+      className={`auth-tab ${activeTab === 'patient-login' ? 'active' : ''}`}
+      onClick={() => setActiveTab('patient-login')}
+    >
+      Patient
+    </button>
+
+    <button
+      className={`auth-tab ${activeTab === 'doctor-login' ? 'active' : ''}`}
+      onClick={() => setActiveTab('doctor-login')}
+    >
+      Doctor
+    </button>
+  </div>
 
             {activeTab === 'patient-login' && (
               <div className="auth-form active">
@@ -482,6 +528,7 @@ const Home = () => {
                       <i className={`fa-solid ${passwordVisible.doctorLogin ? 'fa-eye-slash' : 'fa-eye'}`} onClick={() => setPasswordVisible({ ...passwordVisible, doctorLogin: !passwordVisible.doctorLogin })} style={{ position: 'absolute', right: '10px', top: '12px', cursor: 'pointer' }} />
                     </div>
                   </div>
+                  <div className="form-footer"><a href="#" className="forgot-link">Forgot Password?</a></div>
                   <button type="submit" className="btn btn-primary btn-full" disabled={loading}>{loading ? 'Signing in...' : 'Sign In'}</button>
                 </form>
                 <p className="auth-switch">New doctor? <a href="#" onClick={(e) => { e.preventDefault(); setShowLoginModal(false); setShowDoctorSignUp(true); }}>Register Here</a></p>

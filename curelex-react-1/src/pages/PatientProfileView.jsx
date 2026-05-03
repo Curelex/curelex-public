@@ -367,7 +367,7 @@ export default function PatientProfileView() {
             {editing ? 'Edit Personal Information' : 'Personal Information'}
           </h2>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
             <Field label="Full Name"       fieldKey="name"       icon="fa-user"           type="text"   {...fp} />
             <Field label="Email"           fieldKey="email"      icon="fa-envelope"       type="email"  {...fp} />
             <Field label="Mobile Number"   fieldKey="mobile"     icon="fa-phone"          type="tel"    {...fp} />
@@ -399,7 +399,7 @@ export default function PatientProfileView() {
             <i className="fas fa-phone-alt" style={{ color: '#ef4444' }}></i>
             Emergency Contact
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
             <Field label="Contact Name"   fieldKey="emergencyName"    icon="fa-user-friends" type="text" {...fp} />
             <Field label="Contact Number" fieldKey="emergencyContact" icon="fa-phone"         type="tel"  {...fp} />
           </div>

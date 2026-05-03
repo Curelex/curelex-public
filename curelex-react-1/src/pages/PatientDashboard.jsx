@@ -104,7 +104,7 @@ function FollowUpStatusCard({ currentUser, token }) {
       setLoading(false)
     }
     load()
-  }, [currentUser.id, token])
+  }, [currentUser, token])
 
   // Determine progress step based on what data is available
   const getProgressStep = () => {
