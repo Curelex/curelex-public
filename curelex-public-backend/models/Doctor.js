@@ -96,6 +96,16 @@ const Doctor = sequelize.define("Doctor", {
     allowNull: true,
   },
 
+  // ── Step 4: UPI / QR Code ──  ✅ NEW
+  qrCodeUrl: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  qrCodePublicId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+
   // ── Status & activity ──
   verificationStatus: {
     type: DataTypes.ENUM("pending", "approved", "rejected"),

@@ -1,8 +1,8 @@
-const Doctor          = require('../models/Doctor')
+const Doctor               = require('../models/Doctor')
 const { validationResult } = require('express-validator')
-const bcrypt          = require('bcryptjs')
-const jwt             = require('jsonwebtoken')
-const cloudinary      = require('../config/cloudinary')
+const bcrypt               = require('bcryptjs')
+const jwt                  = require('jsonwebtoken')
+const cloudinary           = require('../config/cloudinary')
 
 async function destroyFile(publicId, resourceType = 'image') {
   if (!publicId) return
@@ -31,12 +31,6 @@ exports.registerDoctor = async (req, res, next) => {
 }
 
 /* ── LOGIN ─────────────────────────────────────────────────────── */
-/**
- * ✅ FIX: JWT payload includes role:'doctor' so that doctorAuth
- *          middleware can read req.user.role reliably on every request.
- *          Also returns verificationStatus + isActive fresh from DB
- *          so the frontend doesn't need a second round-trip on mount.
- */
 exports.loginDoctor = async (req, res, next) => {
   try {
     const { email, password } = req.body
@@ -51,7 +45,7 @@ exports.loginDoctor = async (req, res, next) => {
         id:    doctor.id,
         name:  doctor.name,
         email: doctor.email,
-        role:  'doctor',          // ✅ role is always 'doctor' in the token
+        role:  'doctor',
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
@@ -79,19 +73,11 @@ exports.loginDoctor = async (req, res, next) => {
 }
 
 /* ── TOGGLE ACTIVE  (PATCH /doctors/:id/active) ────────────────── */
-/**
- * ✅ FIX: Always fetches fresh verificationStatus from DB.
- *          Never trusts the JWT for approval status.
- *          Returns { success: true } so the frontend optimistic-update
- *          logic can confirm the change was saved.
- */
 exports.toggleActive = async (req, res, next) => {
   try {
     const doctor = await Doctor.findByPk(req.params.id)
     if (!doctor) return res.status(404).json({ message: 'Doctor not found' })
 
-    // Only block going ACTIVE if not approved.
-    // Going INACTIVE is always allowed regardless of status.
     if (req.body.isActive === true && doctor.verificationStatus !== 'approved') {
       return res.status(403).json({
         success: false,
@@ -123,6 +109,7 @@ exports.getAllDoctors = async (req, res, next) => {
         'address', 'aadhaar', 'licenseNumber', 'qualification',
         'currentInstitute', 'certificateUrl',
         'bankName', 'accountHolderName', 'accountNumber', 'ifscCode',
+        'qrCodeUrl',
         'createdAt',
       ],
       order: [
@@ -145,7 +132,7 @@ exports.getApprovedDoctors = async (req, res, next) => {
       attributes: [
         'id', 'name', 'email', 'mobile', 'specialization', 'experience',
         'photoUrl', 'verificationStatus', 'isActive', 'qualification',
-        'currentInstitute', 'address',
+        'currentInstitute', 'address', 'qrCodeUrl',
       ],
     })
     res.json({ success: true, count: doctors.length, doctors })
@@ -167,20 +154,12 @@ exports.getDoctorById = async (req, res, next) => {
   }
 }
 
-/* ── UPDATE FULL PROFILE (called after DoctorProfileForm submit) ── */
-/**
- * PUT /api/doctors/:id/profile
- * Saves all four steps of the profile form to the DB.
- * Fields accepted exactly match what DoctorProfileForm collects.
- * Files (photo / certificate) are handled separately via Cloudinary
- * upload middleware; here we only persist the resulting URLs if provided.
- */
+/* ── UPDATE FULL PROFILE  (PUT /doctors/:id/profile) ───────────── */
 exports.updateProfile = async (req, res, next) => {
   try {
     const doctor = await Doctor.findByPk(req.params.id)
     if (!doctor) return res.status(404).json({ message: 'Doctor not found' })
 
-    // Only allow the doctor themselves to update their own profile
     if (String(req.user.id) !== String(doctor.id)) {
       return res.status(403).json({ message: 'Forbidden' })
     }
@@ -195,6 +174,7 @@ exports.updateProfile = async (req, res, next) => {
       'experience', 'qualification', 'currentInstitute',
       // Step 4
       'bankName', 'accountHolderName', 'accountNumber', 'ifscCode',
+      'qrCodeUrl', 'qrCodePublicId',
     ]
 
     allowed.forEach(field => {
@@ -204,15 +184,29 @@ exports.updateProfile = async (req, res, next) => {
     doctor.profileComplete = true
     await doctor.save()
 
-    // Return safe subset (no password, no bank details in list view)
     const { password: _pw, ...safe } = doctor.toJSON()
     res.json({ success: true, doctor: safe })
+
   } catch (error) {
+    // ✅ FIX: Handle unique constraint violation (e.g. mobile already taken)
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      const field = error.errors?.[0]?.path || 'field'
+      const fieldLabel = field === 'mobile' ? 'mobile number' : field
+      return res.status(400).json({
+        message: `This ${fieldLabel} is already registered with another account. Please use a different one.`
+      })
+    }
+    // ✅ FIX: Handle other Sequelize validation errors with a clear message
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(400).json({
+        message: error.errors?.[0]?.message || 'Validation error'
+      })
+    }
     next(error)
   }
 }
 
-/* ── UPDATE PROFILE PHOTO ───────────────────────────────────────── */
+/* ── UPDATE PROFILE PHOTO  (PUT /doctors/:id/photo) ────────────── */
 exports.updateProfilePhoto = async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'No photo uploaded' })
@@ -226,6 +220,28 @@ exports.updateProfilePhoto = async (req, res, next) => {
     await doctor.save()
 
     res.json({ success: true, photoUrl: doctor.photoUrl })
+  } catch (error) {
+    await destroyFile(req.file?.filename, 'image')
+    next(error)
+  }
+}
+
+/* ── UPDATE QR CODE  (PUT /doctors/:id/qr) ─────────────────────── */
+exports.updateQrCode = async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'No QR image uploaded' })
+
+    const doctor = await Doctor.findByPk(req.params.id)
+    if (!doctor) return res.status(404).json({ message: 'Doctor not found' })
+
+    // Delete old QR from Cloudinary if one exists
+    await destroyFile(doctor.qrCodePublicId, 'image')
+
+    doctor.qrCodeUrl      = req.file.path
+    doctor.qrCodePublicId = req.file.filename
+    await doctor.save()
+
+    res.json({ success: true, qrCodeUrl: doctor.qrCodeUrl })
   } catch (error) {
     await destroyFile(req.file?.filename, 'image')
     next(error)

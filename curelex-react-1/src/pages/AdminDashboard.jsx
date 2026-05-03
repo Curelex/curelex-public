@@ -85,7 +85,6 @@ export default function AdminDashboard() {
   }
 
   async function fetchAndViewDoc(doc) {
-    // Open modal immediately with partial data so UI feels instant
     setViewDoc(doc)
     setViewDocLoading(true)
     try {
@@ -293,6 +292,12 @@ export default function AdminDashboard() {
                         background: status === 'approved' ? '#d1fae5' : status === 'rejected' ? '#fee2e2' : '#fef3c7',
                         color:      status === 'approved' ? '#065f46' : status === 'rejected' ? '#991b1b' : '#92400e',
                       }}>{status}</span>
+                      {/* ✅ QR badge on card if doctor has uploaded QR */}
+                      {doc.qrCodeUrl && (
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: '#f0fdf4', color: '#16a34a', border: '1px solid #86efac' }}>
+                          <i className="fas fa-qrcode" style={{ marginRight: 4 }}></i>QR Uploaded
+                        </span>
+                      )}
                     </div>
                     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13, color: '#6b7280' }}>
                       {doc.email          && <span><i className="fas fa-envelope"    style={{ marginRight: 5, color: '#2563eb' }}></i>{doc.email}</span>}
@@ -371,12 +376,12 @@ export default function AdminDashboard() {
                   <i className="fas fa-exclamation-triangle" style={{ color: '#f59e0b', fontSize: 16, flexShrink: 0 }}></i>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>Profile Incomplete</div>
-                    <div style={{ fontSize: 12, color: '#b45309', marginTop: 2 }}>This doctor has not submitted their full profile yet. Fields below may be empty until they complete the profile form.</div>
+                    <div style={{ fontSize: 12, color: '#b45309', marginTop: 2 }}>This doctor has not submitted their full profile yet.</div>
                   </div>
                 </div>
               )}
 
-              {/* ── Section 1: Basic Info (Step 1 of form) ── */}
+              {/* ── Section 1: Basic Info ── */}
               <SectionBlock icon="fa-user" label="Basic Information" color="#2563eb">
                 <InfoRow label="Full Name"      icon="fa-id-card"     value={viewDoc.name} />
                 <InfoRow label="Email"          icon="fa-envelope"    value={viewDoc.email} />
@@ -389,13 +394,13 @@ export default function AdminDashboard() {
                 />
               </SectionBlock>
 
-              {/* ── Section 2: Documents (Step 2 of form) ── */}
+              {/* ── Section 2: Documents ── */}
               <SectionBlock icon="fa-file-alt" label="Professional Documents" color="#0891b2">
                 <InfoRow label="Clinic / Home Address" icon="fa-map-marker-alt" value={viewDoc.address} />
                 <InfoRow label="Aadhaar Number"        icon="fa-id-badge"       value={viewDoc.aadhaar} />
                 <InfoRow label="License / Reg. Number" icon="fa-certificate"    value={viewDoc.licenseNumber} />
 
-                {/* Profile Photo preview */}
+                {/* Profile Photo */}
                 <div style={{ padding: '12px 0', borderBottom: '1px solid #f0f0f0' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                     <i className="fas fa-image" style={{ fontSize: 13, color: '#9ca3af', width: 16 }}></i>
@@ -422,7 +427,6 @@ export default function AdminDashboard() {
                     <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>Registration Certificate</span>
                   </div>
                   {viewDoc.certificateUrl ? (
-                    /* If it's an image URL, show inline preview; otherwise show download button */
                     /\.(jpg|jpeg|png|webp)(\?.*)?$/i.test(viewDoc.certificateUrl) ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         <img src={viewDoc.certificateUrl} alt="Certificate"
@@ -448,19 +452,116 @@ export default function AdminDashboard() {
                 </div>
               </SectionBlock>
 
-              {/* ── Section 3: Experience (Step 3 of form) ── */}
+              {/* ── Section 3: Experience ── */}
               <SectionBlock icon="fa-briefcase-medical" label="Professional Experience" color="#7c3aed">
-                <InfoRow label="Years of Experience"       icon="fa-briefcase"       value={viewDoc.experience ? `${viewDoc.experience} years` : null} />
-                <InfoRow label="Qualification"             icon="fa-graduation-cap"  value={viewDoc.qualification} />
+                <InfoRow label="Years of Experience"        icon="fa-briefcase"      value={viewDoc.experience ? `${viewDoc.experience} years` : null} />
+                <InfoRow label="Qualification"              icon="fa-graduation-cap" value={viewDoc.qualification} />
                 <InfoRow label="Current Practice Institute" icon="fa-hospital"       value={viewDoc.currentInstitute} />
               </SectionBlock>
 
-              {/* ── Section 4: Bank / Payment (Step 4 of form) ── */}
+              {/* ── Section 4: Bank / Payment ── */}
               <SectionBlock icon="fa-university" label="Bank / Payment Details" color="#059669">
-                <InfoRow label="Bank Name"          icon="fa-building"    value={viewDoc.bankName} />
-                <InfoRow label="Account Holder"     icon="fa-user"        value={viewDoc.accountHolderName} />
-                <InfoRow label="Account Number"     icon="fa-hashtag"     value={viewDoc.accountNumber} />
-                <InfoRow label="IFSC Code"          icon="fa-code"        value={viewDoc.ifscCode} />
+                <InfoRow label="Bank Name"        icon="fa-building" value={viewDoc.bankName} />
+                <InfoRow label="Account Holder"   icon="fa-user"     value={viewDoc.accountHolderName} />
+                <InfoRow label="Account Number"   icon="fa-hashtag"  value={viewDoc.accountNumber} />
+                <InfoRow label="IFSC Code"        icon="fa-code"     value={viewDoc.ifscCode} />
+
+                {/* ✅ QR Code for Withdrawal — shown in admin */}
+                <div style={{ padding: '14px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <i className="fas fa-qrcode" style={{ fontSize: 13, color: '#059669', width: 16 }}></i>
+                    <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      Payment QR Code
+                    </span>
+                    <span style={{ fontSize: 10, color: '#9ca3af' }}>(for withdrawal)</span>
+                  </div>
+
+                  {viewDoc.qrCodeUrl ? (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+                      {/* QR image preview */}
+                      <div style={{
+                        background: 'white',
+                        border: '2px solid #d1fae5',
+                        borderRadius: 12,
+                        padding: 10,
+                        boxShadow: '0 2px 8px rgba(5,150,105,0.1)',
+                      }}>
+                        <img
+                          src={viewDoc.qrCodeUrl}
+                          alt="Payment QR Code"
+                          style={{
+                            width: 160,
+                            height: 160,
+                            objectFit: 'contain',
+                            borderRadius: 8,
+                            display: 'block',
+                          }}
+                        />
+                        <div style={{ textAlign: 'center', marginTop: 8, fontSize: 11, color: '#6b7280', fontWeight: 600 }}>
+                          Scan to Pay
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                        <a
+                          href={viewDoc.qrCodeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            background: '#f0fdf4', border: '1.5px solid #86efac',
+                            borderRadius: 8, padding: '8px 14px',
+                            textDecoration: 'none', color: '#16a34a',
+                            fontWeight: 600, fontSize: 12,
+                          }}
+                        >
+                          <i className="fas fa-external-link-alt"></i> View Full Size ↗
+                        </a>
+                        <a
+                          href={viewDoc.qrCodeUrl}
+                          download="payment-qr.png"
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            background: '#eff6ff', border: '1.5px solid #bfdbfe',
+                            borderRadius: 8, padding: '8px 14px',
+                            textDecoration: 'none', color: '#1d4ed8',
+                            fontWeight: 600, fontSize: 12,
+                          }}
+                        >
+                          <i className="fas fa-download"></i> Download QR
+                        </a>
+                        <div style={{
+                          background: '#f0fdf4', border: '1px solid #bbf7d0',
+                          borderRadius: 8, padding: '8px 12px',
+                          fontSize: 11, color: '#065f46',
+                          display: 'flex', alignItems: 'center', gap: 6,
+                        }}>
+                          <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
+                          QR code uploaded ✓
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      background: '#f9fafb', border: '1.5px dashed #d1d5db',
+                      borderRadius: 10, padding: '16px 20px',
+                    }}>
+                      <div style={{
+                        width: 48, height: 48, background: '#f3f4f6',
+                        borderRadius: 10, display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', flexShrink: 0,
+                      }}>
+                        <i className="fas fa-qrcode" style={{ fontSize: 22, color: '#d1d5db' }}></i>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#9ca3af' }}>No QR Code uploaded</div>
+                        <div style={{ fontSize: 12, color: '#d1d5db', marginTop: 2 }}>Doctor has not uploaded a payment QR code yet</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </SectionBlock>
 
               {/* Action Buttons */}
