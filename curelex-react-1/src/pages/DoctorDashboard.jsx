@@ -239,7 +239,6 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
   const [medDropdown, setMedDropdown] = useState([])
   const [allMeds,     setAllMeds]     = useState([])
 
-  // ── Tests state ──
   const [tests,       setTests]       = useState([])
   const [testInput,   setTestInput]   = useState('')
   const [testType,    setTestType]    = useState('Pathology')
@@ -322,7 +321,6 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
     }
   }
 
-  // ── Test search & save helpers ──
   const handleTestSearch = (val) => {
     setTestInput(val)
     if (!val.trim()) { setTestDropdown([]); return }
@@ -373,7 +371,6 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
   }
 
   const removeTest = (i) => setTests(p => p.filter((_, idx) => idx !== i))
-
   const updateMed  = (i, field, val) => setMedicines(p => p.map((m, idx) => idx === i ? { ...m, [field]: val } : m))
   const removeMed  = (i) => setMedicines(p => p.filter((_, idx) => idx !== i))
 
@@ -424,13 +421,7 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
       const notesRes = await fetch(`${API}/appointments/${appt.id}/notes`, {
         method: 'PATCH',
         headers: authHeaders(token),
-        body: JSON.stringify({
-          description,
-          note,
-          followUp,
-          followUpInstructions,
-          tests,
-        }),
+        body: JSON.stringify({ description, note, followUp, followUpInstructions, tests }),
       })
       const notesData = await notesRes.json()
       if (!notesData.success) {
@@ -454,24 +445,14 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
     upcoming:  { bg: '#fafafa', border: '#e5e7eb', badge: '#6b7280', badgeBg: '#f3f4f6' },
   }[statusClass]
 
-  const hasExactMedMatch = allMeds.some(
-    m => m.name.toLowerCase() === medSearch.trim().toLowerCase()
-  )
-
-  const hasExactTestMatch = allMyTests.some(
-    t => t.name.toLowerCase() === testInput.trim().toLowerCase()
-  )
+  const hasExactMedMatch = allMeds.some(m => m.name.toLowerCase() === medSearch.trim().toLowerCase())
+  const hasExactTestMatch = allMyTests.some(t => t.name.toLowerCase() === testInput.trim().toLowerCase())
 
   return (
     <div style={{
-      border: `1.5px solid ${sc.border}`,
-      borderRadius: 14,
-      marginBottom: 16,
-      background: sc.bg,
-      overflow: 'hidden',
-      boxShadow: statusClass === 'current'
-        ? '0 4px 20px rgba(37,99,235,0.12)'
-        : '0 1px 4px rgba(0,0,0,0.06)',
+      border: `1.5px solid ${sc.border}`, borderRadius: 14, marginBottom: 16,
+      background: sc.bg, overflow: 'hidden',
+      boxShadow: statusClass === 'current' ? '0 4px 20px rgba(37,99,235,0.12)' : '0 1px 4px rgba(0,0,0,0.06)',
     }}>
       <div
         style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', cursor: 'pointer', flexWrap: 'wrap' }}
@@ -503,14 +484,12 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
                 {appt.symptoms?.length > 60 ? '…' : ''}
               </div>
             </div>
-
             <span style={{
               fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
               background: sc.badgeBg, color: sc.badge, border: `1px solid ${sc.border}`,
             }}>
               {statusLabel}
             </span>
-
             {isPending && (
               <span style={{
                 fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
@@ -519,7 +498,6 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
                 ⏳ Awaiting Approval
               </span>
             )}
-
             {saved && (
               <span style={{
                 fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
@@ -528,7 +506,6 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
                 ✓ Record Saved
               </span>
             )}
-
             <span style={{
               fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
               background: '#f0fdf4', color: '#16a34a', border: '1px solid #86efac',
@@ -538,10 +515,7 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
           </div>
         </div>
 
-        <div
-          style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}
-          onClick={e => e.stopPropagation()}
-        >
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
           {isPending && (
             <button
               onClick={handleApprove}
@@ -558,7 +532,6 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
               {approving ? 'Approving…' : 'Approve'}
             </button>
           )}
-
           {!isPending && appt.meetingLink && (
             <button
               onClick={() => window.open(appt.meetingLink, '_blank')}
@@ -572,7 +545,6 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
               <i className="fas fa-video"></i> Start Call
             </button>
           )}
-
           <button
             onClick={() => setExpanded(e => !e)}
             style={{
@@ -588,18 +560,14 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
       {expanded && (
         <div style={{ borderTop: `1px solid ${sc.border}`, background: 'white' }}>
           <div style={{ padding: '16px 18px', borderBottom: '1px solid #f3f4f6' }}>
-            <div style={{
-              fontSize: 11, fontWeight: 700, color: '#6b7280',
-              textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
-            }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
               <i className="fas fa-notes-medical" style={{ marginRight: 6, color: '#2563eb' }}></i>
               Patient's Problem / Description
             </div>
             {appt.symptoms ? (
               <div style={{
                 background: '#f8faff', border: '1px solid #dbeafe',
-                borderRadius: 8, padding: '10px 14px',
-                fontSize: 13, color: '#1e40af', marginBottom: 10,
+                borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#1e40af', marginBottom: 10,
               }}>
                 <i className="fas fa-stethoscope" style={{ marginRight: 8 }}></i>
                 {appt.symptoms}
@@ -623,12 +591,8 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
-            {/* ── Medicine column ── */}
             <div style={{ padding: '16px 18px', borderBottom: '1px solid #f3f4f6', borderRight: '1px solid #f3f4f6' }}>
-              <div style={{
-                fontSize: 11, fontWeight: 700, color: '#6b7280',
-                textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10,
-              }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
                 <i className="fas fa-pills" style={{ marginRight: 6, color: '#7c3aed' }}></i>Add Medicine
               </div>
               <div style={{ position: 'relative' }}>
@@ -637,10 +601,7 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
                   value={medSearch}
                   onChange={e => handleMedSearch(e.target.value)}
                   placeholder="Search or type medicine name..."
-                  style={{
-                    width: '100%', padding: '7px 12px', border: '1px solid #e5e7eb',
-                    borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none',
-                  }}
+                  style={{ width: '100%', padding: '7px 12px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none' }}
                 />
                 {(medDropdown.length > 0 || (medSearch.trim() && !hasExactMedMatch)) && (
                   <div style={{
@@ -649,9 +610,7 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
                     boxShadow: '0 4px 16px rgba(0,0,0,0.1)', maxHeight: 200, overflowY: 'auto',
                   }}>
                     {medDropdown.map(m => (
-                      <div
-                        key={m.name}
-                        onClick={() => addMedicine(m.name)}
+                      <div key={m.name} onClick={() => addMedicine(m.name)}
                         style={{ padding: '7px 12px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #f3f4f6', color: '#374151' }}
                         onMouseEnter={e => e.currentTarget.style.background = '#f8faff'}
                         onMouseLeave={e => e.currentTarget.style.background = 'white'}
@@ -665,8 +624,7 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
                       </div>
                     ))}
                     {medSearch.trim() && !hasExactMedMatch && (
-                      <div
-                        onClick={() => saveAndAddMedicine(medSearch.trim())}
+                      <div onClick={() => saveAndAddMedicine(medSearch.trim())}
                         style={{
                           padding: '9px 12px', cursor: 'pointer', fontSize: 13,
                           color: '#7c3aed', fontWeight: 700, background: '#faf5ff',
@@ -683,70 +641,41 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
                   </div>
                 )}
               </div>
-
               <div style={{ marginTop: 8 }}>
                 {medicines.length === 0 && (
-                  <p style={{ fontSize: 12, color: '#9ca3af', margin: '4px 0' }}>
-                    No medicines added yet — search above
-                  </p>
+                  <p style={{ fontSize: 12, color: '#9ca3af', margin: '4px 0' }}>No medicines added yet — search above</p>
                 )}
                 {medicines.map((m, i) => (
-                  <div key={i} style={{
-                    background: '#faf5ff', border: '1px solid #e9d5ff',
-                    borderRadius: 8, padding: '8px 10px', marginBottom: 6,
-                  }}>
+                  <div key={i} style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 8, padding: '8px 10px', marginBottom: 6 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: '#6d28d9' }}>{m.name}</span>
-                      <button
-                        onClick={() => removeMed(i)}
-                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 0, fontSize: 12 }}
-                      >
+                      <button onClick={() => removeMed(i)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 0, fontSize: 12 }}>
                         <i className="fas fa-times"></i>
                       </button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
-                      <input
-                        value={m.dosage}
-                        placeholder="Dosage"
-                        onChange={e => updateMed(i, 'dosage', e.target.value)}
-                        style={{ padding: '4px 6px', border: '1px solid #ddd6fe', borderRadius: 5, fontSize: 11 }}
-                      />
-                      <select
-                        value={m.frequency}
-                        onChange={e => updateMed(i, 'frequency', e.target.value)}
-                        style={{ padding: '4px 4px', border: '1px solid #ddd6fe', borderRadius: 5, fontSize: 11 }}
-                      >
-                        {['Once daily', 'Twice daily', 'Thrice daily', 'SOS', 'As needed'].map(o => (
-                          <option key={o}>{o}</option>
-                        ))}
+                      <input value={m.dosage} placeholder="Dosage" onChange={e => updateMed(i, 'dosage', e.target.value)}
+                        style={{ padding: '4px 6px', border: '1px solid #ddd6fe', borderRadius: 5, fontSize: 11 }} />
+                      <select value={m.frequency} onChange={e => updateMed(i, 'frequency', e.target.value)}
+                        style={{ padding: '4px 4px', border: '1px solid #ddd6fe', borderRadius: 5, fontSize: 11 }}>
+                        {['Once daily', 'Twice daily', 'Thrice daily', 'SOS', 'As needed'].map(o => <option key={o}>{o}</option>)}
                       </select>
-                      <input
-                        value={m.duration}
-                        placeholder="Duration"
-                        onChange={e => updateMed(i, 'duration', e.target.value)}
-                        style={{ padding: '4px 6px', border: '1px solid #ddd6fe', borderRadius: 5, fontSize: 11 }}
-                      />
+                      <input value={m.duration} placeholder="Duration" onChange={e => updateMed(i, 'duration', e.target.value)}
+                        style={{ padding: '4px 6px', border: '1px solid #ddd6fe', borderRadius: 5, fontSize: 11 }} />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* ── Tests column ── */}
             <div style={{ padding: '16px 18px', borderBottom: '1px solid #f3f4f6' }}>
-              <div style={{
-                fontSize: 11, fontWeight: 700, color: '#6b7280',
-                textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10,
-              }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
                 <i className="fas fa-flask" style={{ marginRight: 6, color: '#0891b2' }}></i>
                 Add Pathology / Radiology Tests
               </div>
               <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                <select
-                  value={testType}
-                  onChange={e => setTestType(e.target.value)}
-                  style={{ padding: '7px 8px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 12, color: '#374151', flexShrink: 0 }}
-                >
+                <select value={testType} onChange={e => setTestType(e.target.value)}
+                  style={{ padding: '7px 8px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 12, color: '#374151', flexShrink: 0 }}>
                   <option>Pathology</option>
                   <option>Radiology</option>
                   <option>Cardiology</option>
@@ -756,15 +685,10 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
                   <input
                     value={testInput}
                     onChange={e => handleTestSearch(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        if (testInput.trim()) addTestManual()
-                      }
-                    }}
+                    onKeyDown={e => { if (e.key === 'Enter' && testInput.trim()) addTestManual() }}
                     placeholder="Search or type test name..."
                     style={{ width: '100%', padding: '7px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
                   />
-                  {/* Test dropdown */}
                   {(testDropdown.length > 0 || (testInput.trim() && !hasExactTestMatch)) && (
                     <div style={{
                       position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
@@ -772,28 +696,18 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
                       boxShadow: '0 4px 16px rgba(0,0,0,0.1)', maxHeight: 200, overflowY: 'auto',
                     }}>
                       {testDropdown.map((t, ti) => (
-                        <div
-                          key={ti}
-                          onClick={() => addTestFromDropdown(t)}
+                        <div key={ti} onClick={() => addTestFromDropdown(t)}
                           style={{ padding: '7px 12px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #f3f4f6', color: '#374151' }}
                           onMouseEnter={e => e.currentTarget.style.background = '#ecfeff'}
                           onMouseLeave={e => e.currentTarget.style.background = 'white'}
                         >
                           {t.name}
-                          {t.doctorId && (
-                            <span style={{ marginLeft: 6, fontSize: 10, background: '#cffafe', color: '#0e7490', padding: '1px 6px', borderRadius: 10 }}>
-                              My Test
-                            </span>
-                          )}
-                          {t.category && (
-                            <span style={{ marginLeft: 4, fontSize: 10, color: '#6b7280' }}>· {t.category}</span>
-                          )}
+                          {t.doctorId && <span style={{ marginLeft: 6, fontSize: 10, background: '#cffafe', color: '#0e7490', padding: '1px 6px', borderRadius: 10 }}>My Test</span>}
+                          {t.category && <span style={{ marginLeft: 4, fontSize: 10, color: '#6b7280' }}>· {t.category}</span>}
                         </div>
                       ))}
-                      {/* Save to My Tests option */}
                       {testInput.trim() && !hasExactTestMatch && (
-                        <div
-                          onClick={() => saveAndAddTest(testInput.trim())}
+                        <div onClick={() => saveAndAddTest(testInput.trim())}
                           style={{
                             padding: '9px 12px', cursor: 'pointer', fontSize: 13,
                             color: '#0891b2', fontWeight: 700, background: '#ecfeff',
@@ -810,19 +724,13 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
                     </div>
                   )}
                 </div>
-                <button
-                  onClick={addTestManual}
-                  style={{ background: '#0891b2', color: 'white', border: 'none', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', fontSize: 13, flexShrink: 0 }}
-                >
+                <button onClick={addTestManual}
+                  style={{ background: '#0891b2', color: 'white', border: 'none', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', fontSize: 13, flexShrink: 0 }}>
                   <i className="fas fa-plus"></i>
                 </button>
               </div>
               <div>
-                {tests.length === 0 && (
-                  <p style={{ fontSize: 12, color: '#9ca3af', margin: '4px 0' }}>
-                    No tests added yet — search or type & press Enter
-                  </p>
-                )}
+                {tests.length === 0 && <p style={{ fontSize: 12, color: '#9ca3af', margin: '4px 0' }}>No tests added yet — search or type & press Enter</p>}
                 {tests.map((t, i) => (
                   <div key={i} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -831,15 +739,9 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
                   }}>
                     <div>
                       <span style={{ fontSize: 12, fontWeight: 700, color: '#0e7490' }}>{t.name}</span>
-                      <span style={{
-                        fontSize: 10, color: '#0891b2', marginLeft: 6,
-                        background: '#cffafe', padding: '1px 6px', borderRadius: 10,
-                      }}>{t.type}</span>
+                      <span style={{ fontSize: 10, color: '#0891b2', marginLeft: 6, background: '#cffafe', padding: '1px 6px', borderRadius: 10 }}>{t.type}</span>
                     </div>
-                    <button
-                      onClick={() => removeTest(i)}
-                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 12 }}
-                    >
+                    <button onClick={() => removeTest(i)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 12 }}>
                       <i className="fas fa-times"></i>
                     </button>
                   </div>
@@ -850,73 +752,35 @@ function PatientAppointmentCard({ appt, index, doctorId, token }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, borderBottom: '1px solid #f3f4f6' }}>
             <div style={{ padding: '14px 18px', borderRight: '1px solid #f3f4f6' }}>
-              <div style={{
-                fontSize: 11, fontWeight: 700, color: '#6b7280',
-                textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
-              }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
                 <i className="fas fa-sticky-note" style={{ marginRight: 6, color: '#f59e0b' }}></i>Add Note
               </div>
-              <textarea
-                rows={2}
-                value={note}
-                onChange={e => setNote(e.target.value)}
-                placeholder="Additional clinical notes..."
-                style={{
-                  width: '100%', padding: '8px 10px', border: '1px solid #e5e7eb',
-                  borderRadius: 8, fontSize: 13, resize: 'none', boxSizing: 'border-box', outline: 'none',
-                }}
-              />
+              <textarea rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder="Additional clinical notes..."
+                style={{ width: '100%', padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, resize: 'none', boxSizing: 'border-box', outline: 'none' }} />
             </div>
             <div style={{ padding: '14px 18px' }}>
-              <div style={{
-                fontSize: 11, fontWeight: 700, color: '#6b7280',
-                textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
-              }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
                 <i className="fas fa-calendar-alt" style={{ marginRight: 6, color: '#10b981' }}></i>Follow Up
               </div>
-              <input
-                type="date"
-                value={followUp}
-                onChange={e => setFollowUp(e.target.value)}
-                style={{
-                  width: '100%', padding: '8px 10px', border: '1px solid #e5e7eb',
-                  borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none', marginBottom: 8,
-                }}
-              />
-              <input
-                type="text"
-                value={followUpInstructions}
-                onChange={e => setFollowUpInstructions(e.target.value)}
-                placeholder="Follow-up instructions..."
-                style={{
-                  width: '100%', padding: '8px 10px', border: '1px solid #e5e7eb',
-                  borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none',
-                }}
-              />
+              <input type="date" value={followUp} onChange={e => setFollowUp(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none', marginBottom: 8 }} />
+              <input type="text" value={followUpInstructions} onChange={e => setFollowUpInstructions(e.target.value)} placeholder="Follow-up instructions..."
+                style={{ width: '100%', padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none' }} />
             </div>
           </div>
 
           <div style={{ padding: '14px 18px', display: 'flex', justifyContent: 'flex-end', gap: 10, background: '#fafafa' }}>
-            <button
-              onClick={() => setExpanded(false)}
-              style={{
-                padding: '9px 20px', borderRadius: 8, border: '1px solid #e5e7eb',
-                background: 'white', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              }}
-            >
+            <button onClick={() => setExpanded(false)}
+              style={{ padding: '9px 20px', borderRadius: 8, border: '1px solid #e5e7eb', background: 'white', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               Collapse
             </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
+            <button onClick={handleSave} disabled={saving}
               style={{
                 padding: '9px 24px', borderRadius: 8, border: 'none',
                 background: saving ? '#94a3b8' : 'linear-gradient(135deg,#2563eb,#7c3aed)',
                 color: 'white', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', gap: 8,
-                opacity: saving ? 0.8 : 1,
-              }}
-            >
+                display: 'flex', alignItems: 'center', gap: 8, opacity: saving ? 0.8 : 1,
+              }}>
               <i className={`fas ${saving ? 'fa-spinner fa-spin' : 'fa-save'}`}></i>
               {saving ? 'Saving...' : 'Save Record'}
             </button>
@@ -965,29 +829,20 @@ function PrescriptionModal({ patientId, doctorId, token, onClose, onSuccess }) {
     if (!name.trim()) return
     try {
       const res  = await fetch(`${API}/medicines/doctor/add`, {
-        method: 'POST',
-        headers: authHeaders(token),
+        method: 'POST', headers: authHeaders(token),
         body: JSON.stringify({ name: name.trim(), composition: '', dosageForm: 'Tablet', doctorId }),
       })
       const data = await res.json()
       if (data.success) {
         showToast(`"${name}" saved to My Medicines ✅`, 'success')
-        refreshMeds()
-        selectMedicine(name)
-      } else {
-        showToast(data.message || 'Could not save medicine', 'error')
-      }
-    } catch {
-      showToast('Server error while saving medicine', 'error')
-    }
+        refreshMeds(); selectMedicine(name)
+      } else { showToast(data.message || 'Could not save medicine', 'error') }
+    } catch { showToast('Server error while saving medicine', 'error') }
   }
 
   const updateField = (i, field, val) => setSelected(s => s.map((m, idx) => idx === i ? { ...m, [field]: val } : m))
   const remove      = (i) => setSelected(s => s.filter((_, idx) => idx !== i))
-
-  const hasExactMatch = allMedicines.some(
-    m => m.name.toLowerCase() === search.trim().toLowerCase()
-  )
+  const hasExactMatch = allMedicines.some(m => m.name.toLowerCase() === search.trim().toLowerCase())
 
   const submit = async () => {
     if (!selected.length) { showToast('Add at least one medicine', 'error'); return }
@@ -1019,26 +874,21 @@ function PrescriptionModal({ patientId, doctorId, token, onClose, onSuccess }) {
           <label>Search Medicine</label>
           <input type="text" placeholder="Type medicine name..." value={search} onChange={e => handleSearch(e.target.value)}
             style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, margin: '6px 0' }} />
-
           {(dropdown.length > 0 || (search.trim() && !hasExactMatch)) && (
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, maxHeight: 200, overflowY: 'auto', background: 'var(--card-bg)' }}>
               {dropdown.map(m => (
-                <div key={m.name} onClick={() => selectMedicine(m.name)} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
+                <div key={m.name} onClick={() => selectMedicine(m.name)}
+                  style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#f8faff'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                   <strong>{m.name}</strong>
-                  {m.doctorId && (
-                    <span style={{ marginLeft: 6, fontSize: 10, background: '#ede9fe', color: '#7c3aed', padding: '1px 6px', borderRadius: 10 }}>
-                      My Medicine
-                    </span>
-                  )}
+                  {m.doctorId && <span style={{ marginLeft: 6, fontSize: 10, background: '#ede9fe', color: '#7c3aed', padding: '1px 6px', borderRadius: 10 }}>My Medicine</span>}
                   <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}> · {m.dosageForm || ''}</span>
                 </div>
               ))}
               {search.trim() && !hasExactMatch && (
-                <div
-                  onClick={() => saveAndSelectMedicine(search.trim())}
+                <div onClick={() => saveAndSelectMedicine(search.trim())}
                   style={{
                     padding: '9px 12px', cursor: 'pointer', fontSize: 13,
                     color: '#7c3aed', fontWeight: 700, background: '#faf5ff',
@@ -1054,7 +904,6 @@ function PrescriptionModal({ patientId, doctorId, token, onClose, onSuccess }) {
               )}
             </div>
           )}
-
           <div style={{ marginTop: '1rem' }}>
             {selected.length === 0 && <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>No medicines added yet.</p>}
             {selected.map((m, i) => (
@@ -1139,14 +988,10 @@ function StatusBanner({ status, onAction }) {
         ? 'linear-gradient(135deg,#667eea,#764ba2)'
         : 'linear-gradient(135deg,#f59e0b,#f97316)',
       borderRadius: 16, padding: '1.5rem 2rem', marginBottom: '1.5rem',
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      flexWrap: 'wrap', gap: '1rem',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <div style={{
-          width: 48, height: 48, background: 'rgba(255,255,255,0.2)',
-          borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
+        <div style={{ width: 48, height: 48, background: 'rgba(255,255,255,0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <i className={`fas ${status === 'incomplete' ? 'fa-user-edit' : 'fa-clock'}`} style={{ fontSize: 24, color: 'white' }}></i>
         </div>
         <div>
@@ -1160,11 +1005,8 @@ function StatusBanner({ status, onAction }) {
           </p>
         </div>
       </div>
-      <button
-        className="btn"
-        onClick={onAction}
-        style={{ background: 'white', color: status === 'incomplete' ? '#667eea' : '#f59e0b', border: 'none', padding: '10px 24px', fontWeight: 600 }}
-      >
+      <button className="btn" onClick={onAction}
+        style={{ background: 'white', color: status === 'incomplete' ? '#667eea' : '#f59e0b', border: 'none', padding: '10px 24px', fontWeight: 600 }}>
         <i className={`fas ${status === 'incomplete' ? 'fa-arrow-right' : 'fa-sync-alt'}`}></i>
         {status === 'incomplete' ? ' Complete Profile' : ' Check Status'}
       </button>
@@ -1186,36 +1028,22 @@ function PatientIncomingBanner({ requests, onAccept, onReject }) {
     }}>
       <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
-        <div style={{
-          width: 52, height: 52, borderRadius: '50%',
-          background: 'rgba(255,255,255,0.2)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 22, flexShrink: 0,
-        }}>
+        <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
           <i className="fas fa-user-injured"></i>
         </div>
         <div style={{ flex: 1, minWidth: 200 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{ background: '#fbbf24', color: '#78350f', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase' }}>
-              New Patient
-            </span>
-            <span style={{ fontSize: 12, opacity: 0.8 }}>
-              {patient.createdAt ? timeAgoString(patient.createdAt) : 'Just now'}
-            </span>
+            <span style={{ background: '#fbbf24', color: '#78350f', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase' }}>New Patient</span>
+            <span style={{ fontSize: 12, opacity: 0.8 }}>{patient.createdAt ? timeAgoString(patient.createdAt) : 'Just now'}</span>
           </div>
           <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700 }}>
             {patient.patientName || `Patient #${patient.patientId}`} arriving
           </h3>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13, opacity: 0.9 }}>
-            {patient.symptoms && (
-              <span><i className="fas fa-stethoscope" style={{ marginRight: 4 }}></i>{patient.symptoms}</span>
-            )}
+            {patient.symptoms && <span><i className="fas fa-stethoscope" style={{ marginRight: 4 }}></i>{patient.symptoms}</span>}
           </div>
-          <input
-            type="text"
-            placeholder="What do you prefer? (e.g. Video call, In-person...)"
-            value={preference}
-            onChange={e => setPreference(e.target.value)}
+          <input type="text" placeholder="What do you prefer? (e.g. Video call, In-person...)"
+            value={preference} onChange={e => setPreference(e.target.value)}
             style={{
               marginTop: 12, width: '100%', padding: '8px 14px',
               borderRadius: 8, border: '1.5px solid rgba(255,255,255,0.3)',
@@ -1225,25 +1053,12 @@ function PatientIncomingBanner({ requests, onAccept, onReject }) {
           />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
-          <button
-            onClick={() => onAccept(patient.id)}
-            style={{
-              background: 'white', color: '#1e40af', border: 'none',
-              borderRadius: 8, padding: '10px 20px', fontWeight: 700,
-              fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-            }}
-          >
+          <button onClick={() => onAccept(patient.id)}
+            style={{ background: 'white', color: '#1e40af', border: 'none', borderRadius: 8, padding: '10px 20px', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <i className="fas fa-check"></i> Accept
           </button>
-          <button
-            onClick={() => onReject(patient.id)}
-            style={{
-              background: 'rgba(255,255,255,0.15)', color: 'white',
-              border: '1.5px solid rgba(255,255,255,0.4)',
-              borderRadius: 8, padding: '10px 20px', fontWeight: 600,
-              fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-            }}
-          >
+          <button onClick={() => onReject(patient.id)}
+            style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1.5px solid rgba(255,255,255,0.4)', borderRadius: 8, padding: '10px 20px', fontWeight: 600, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <i className="fas fa-times"></i> Decline
           </button>
         </div>
@@ -1261,26 +1076,16 @@ function PatientIncomingBanner({ requests, onAccept, onReject }) {
 /* ─── Availability Toggle ────────────────────────────────────── */
 function AvailabilityToggle({ isActive, onToggle }) {
   return (
-    <button
-      onClick={onToggle}
+    <button onClick={onToggle}
       style={{
         display: 'flex', alignItems: 'center', gap: 8,
         padding: '8px 18px', borderRadius: 50, border: 'none',
         cursor: 'pointer', fontWeight: 700, fontSize: 13, transition: 'all 0.3s ease',
-        background: isActive
-          ? 'linear-gradient(135deg,#10b981,#059669)'
-          : 'linear-gradient(135deg,#ef4444,#dc2626)',
+        background: isActive ? 'linear-gradient(135deg,#10b981,#059669)' : 'linear-gradient(135deg,#ef4444,#dc2626)',
         color: 'white',
-        boxShadow: isActive
-          ? '0 2px 12px rgba(16,185,129,0.4)'
-          : '0 2px 12px rgba(239,68,68,0.4)',
-      }}
-    >
-      <span style={{
-        width: 20, height: 20, borderRadius: '50%',
-        background: 'rgba(255,255,255,0.3)',
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10,
+        boxShadow: isActive ? '0 2px 12px rgba(16,185,129,0.4)' : '0 2px 12px rgba(239,68,68,0.4)',
       }}>
+      <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(255,255,255,0.3)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>
         <i className={`fas ${isActive ? 'fa-check' : 'fa-times'}`}></i>
       </span>
       {isActive ? 'Active' : 'Inactive'}
@@ -1289,10 +1094,37 @@ function AvailabilityToggle({ isActive, onToggle }) {
 }
 
 /* ─── Income Mini Cards ──────────────────────────────────────── */
-function IncomeMiniCards({ todayIncome, totalIncome }) {
+// ✅ FIXED: All 3 cards in one row — consultationFee, todayIncome, totalIncome
+function IncomeMiniCards({ todayIncome, totalIncome, consultationFee }) {
   const fmt = (n) => '₹' + n.toLocaleString('en-IN')
   return (
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14 }}>
+
+      {/* Consultation Fee Card */}
+      {consultationFee && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: 'linear-gradient(135deg,#ecfdf5,#d1fae5)',
+          border: '1.5px solid #6ee7b7', borderRadius: 12, padding: '10px 16px', minWidth: 160,
+        }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: '50%',
+            background: 'linear-gradient(135deg,#10b981,#059669)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <i className="fas fa-rupee-sign" style={{ color: 'white', fontSize: 14 }}></i>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: '#065f46', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Consultation Fee</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#064e3b', lineHeight: 1.2 }}>
+              ₹{consultationFee}
+              <span style={{ fontSize: 11, fontWeight: 500, color: '#059669', marginLeft: 5 }}>per visit</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Today's Income */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
         background: 'linear-gradient(135deg,#ecfdf5,#d1fae5)',
@@ -1310,6 +1142,8 @@ function IncomeMiniCards({ todayIncome, totalIncome }) {
           <div style={{ fontSize: 18, fontWeight: 800, color: '#064e3b', lineHeight: 1.2 }}>{fmt(todayIncome)}</div>
         </div>
       </div>
+
+      {/* Total Income */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
         background: 'linear-gradient(135deg,#eff6ff,#dbeafe)',
@@ -1327,6 +1161,7 @@ function IncomeMiniCards({ todayIncome, totalIncome }) {
           <div style={{ fontSize: 18, fontWeight: 800, color: '#1e3a8a', lineHeight: 1.2 }}>{fmt(totalIncome)}</div>
         </div>
       </div>
+
     </div>
   )
 }
@@ -1362,8 +1197,7 @@ function AddMedicinePanel({ doctorId, token, onBack }) {
     setSaving(true)
     try {
       const res  = await fetch(`${API}/medicines/doctor/add`, {
-        method: 'POST',
-        headers: authHeaders(token),
+        method: 'POST', headers: authHeaders(token),
         body: JSON.stringify({ name: name.trim(), composition, dosageForm, doctorId }),
       })
       const data = await res.json()
@@ -1371,12 +1205,8 @@ function AddMedicinePanel({ doctorId, token, onBack }) {
         showToast(`${name} added to your medicine list ✅`, 'success')
         setName(''); setComp(''); setForm('Tablet')
         fetchMyMeds()
-      } else {
-        showToast(data.message || 'Failed to add', 'error')
-      }
-    } catch {
-      showToast('Server error', 'error')
-    }
+      } else { showToast(data.message || 'Failed to add', 'error') }
+    } catch { showToast('Server error', 'error') }
     setSaving(false)
   }
 
@@ -1384,135 +1214,64 @@ function AddMedicinePanel({ doctorId, token, onBack }) {
     if (!window.confirm(`Remove "${medName}" from your list?`)) return
     setDeleting(id)
     try {
-      const res  = await fetch(`${API}/medicines/doctor/${id}`, {
-        method: 'DELETE', headers: authHeaders(token),
-      })
+      const res  = await fetch(`${API}/medicines/doctor/${id}`, { method: 'DELETE', headers: authHeaders(token) })
       const data = await res.json()
-      if (data.success) {
-        showToast(`${medName} removed`, 'info')
-        fetchMyMeds()
-      } else {
-        showToast(data.message || 'Could not delete', 'error')
-      }
-    } catch {
-      showToast('Server error', 'error')
-    }
+      if (data.success) { showToast(`${medName} removed`, 'info'); fetchMyMeds() }
+      else { showToast(data.message || 'Could not delete', 'error') }
+    } catch { showToast('Server error', 'error') }
     setDeleting(null)
   }
 
   return (
     <div>
-      <div style={{
-        background: 'white', borderRadius: 14, padding: '16px 22px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 20,
-        display: 'flex', alignItems: 'center', gap: 14,
-      }}>
-        <button
-          onClick={onBack}
-          style={{
-            background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8,
-            padding: '8px 16px', cursor: 'pointer', fontSize: 13, color: '#374151',
-            fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
-          }}
-        >
+      <div style={{ background: 'white', borderRadius: 14, padding: '16px 22px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 14 }}>
+        <button onClick={onBack} style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 13, color: '#374151', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <i className="fas fa-arrow-left"></i> Back
         </button>
         <div>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#111827' }}>
-            <i className="fas fa-pills" style={{ marginRight: 10, color: '#7c3aed' }}></i>
-            My Medicine List
+            <i className="fas fa-pills" style={{ marginRight: 10, color: '#7c3aed' }}></i>My Medicine List
           </h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6b7280' }}>
-            Add medicines you prescribe — only visible on your dashboard
-          </p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6b7280' }}>Add medicines you prescribe — only visible on your dashboard</p>
         </div>
       </div>
 
-      <div style={{
-        background: 'white', borderRadius: 14, padding: '20px 24px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 20,
-      }}>
+      <div style={{ background: 'white', borderRadius: 14, padding: '20px 24px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 20 }}>
         <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#374151' }}>
-          <i className="fas fa-plus-circle" style={{ marginRight: 8, color: '#7c3aed' }}></i>
-          Add New Medicine
+          <i className="fas fa-plus-circle" style={{ marginRight: 8, color: '#7c3aed' }}></i>Add New Medicine
         </h3>
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr', gap: 12, marginBottom: 14 }}>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-              Medicine Name *
-            </label>
-            <input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              placeholder="e.g. Paracetamol 500mg"
-              style={{
-                width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb',
-                borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none',
-              }}
-            />
+            <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Medicine Name *</label>
+            <input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="e.g. Paracetamol 500mg"
+              style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none' }} />
           </div>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-              Composition
-            </label>
-            <input
-              value={composition}
-              onChange={e => setComp(e.target.value)}
-              placeholder="e.g. Acetaminophen"
-              style={{
-                width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb',
-                borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none',
-              }}
-            />
+            <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Composition</label>
+            <input value={composition} onChange={e => setComp(e.target.value)} placeholder="e.g. Acetaminophen"
+              style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none' }} />
           </div>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-              Form
-            </label>
-            <select
-              value={dosageForm}
-              onChange={e => setForm(e.target.value)}
-              style={{
-                width: '100%', padding: '9px 10px', border: '1.5px solid #e5e7eb',
-                borderRadius: 8, fontSize: 13, color: '#374151',
-              }}
-            >
-              {['Tablet','Capsule','Syrup','Injection','Cream','Drops','Inhaler','Powder'].map(f => (
-                <option key={f}>{f}</option>
-              ))}
+            <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Form</label>
+            <select value={dosageForm} onChange={e => setForm(e.target.value)}
+              style={{ width: '100%', padding: '9px 10px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, color: '#374151' }}>
+              {['Tablet','Capsule','Syrup','Injection','Cream','Drops','Inhaler','Powder'].map(f => <option key={f}>{f}</option>)}
             </select>
           </div>
         </div>
-        <button
-          onClick={handleAdd}
-          disabled={saving}
-          style={{
-            background: saving ? '#94a3b8' : 'linear-gradient(135deg,#7c3aed,#2563eb)',
-            color: 'white', border: 'none', borderRadius: 8,
-            padding: '10px 24px', fontWeight: 700, fontSize: 13,
-            cursor: saving ? 'not-allowed' : 'pointer',
-            display: 'flex', alignItems: 'center', gap: 8,
-          }}
-        >
+        <button onClick={handleAdd} disabled={saving}
+          style={{ background: saving ? '#94a3b8' : 'linear-gradient(135deg,#7c3aed,#2563eb)', color: 'white', border: 'none', borderRadius: 8, padding: '10px 24px', fontWeight: 700, fontSize: 13, cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
           <i className={`fas ${saving ? 'fa-spinner fa-spin' : 'fa-plus'}`}></i>
           {saving ? 'Adding...' : 'Add Medicine'}
         </button>
       </div>
 
-      <div style={{
-        background: 'white', borderRadius: 14, padding: '20px 24px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0',
-      }}>
+      <div style={{ background: 'white', borderRadius: 14, padding: '20px 24px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}>
         <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#374151' }}>
-          <i className="fas fa-list" style={{ marginRight: 8, color: '#2563eb' }}></i>
-          My Added Medicines ({myMeds.length})
+          <i className="fas fa-list" style={{ marginRight: 8, color: '#2563eb' }}></i>My Added Medicines ({myMeds.length})
         </h3>
-
         {loadingMeds ? (
-          <div style={{ textAlign: 'center', padding: 32 }}>
-            <i className="fas fa-spinner fa-spin" style={{ fontSize: 28, color: '#7c3aed' }}></i>
-          </div>
+          <div style={{ textAlign: 'center', padding: 32 }}><i className="fas fa-spinner fa-spin" style={{ fontSize: 28, color: '#7c3aed' }}></i></div>
         ) : myMeds.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
             <i className="fas fa-pills" style={{ fontSize: 42, display: 'block', marginBottom: 14, color: '#d1d5db' }}></i>
@@ -1522,39 +1281,17 @@ function AddMedicinePanel({ doctorId, token, onBack }) {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
             {myMeds.map((med) => (
-              <div key={med.id} style={{
-                background: 'linear-gradient(135deg,#faf5ff,#f5f3ff)',
-                border: '1.5px solid #e9d5ff',
-                borderRadius: 12, padding: '14px 16px',
-                display: 'flex', flexDirection: 'column', gap: 8,
-                position: 'relative',
-              }}>
+              <div key={med.id} style={{ background: 'linear-gradient(135deg,#faf5ff,#f5f3ff)', border: '1.5px solid #e9d5ff', borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8, position: 'relative' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: '#6d28d9', flex: 1, paddingRight: 8 }}>
-                    {med.name}
-                  </div>
-                  <button
-                    onClick={() => handleDelete(med.id, med.name)}
-                    disabled={deleting === med.id}
-                    title="Remove medicine"
-                    style={{
-                      background: 'none', border: 'none', color: '#ef4444',
-                      cursor: 'pointer', fontSize: 13, padding: 2, flexShrink: 0,
-                      opacity: deleting === med.id ? 0.5 : 1,
-                    }}
-                  >
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#6d28d9', flex: 1, paddingRight: 8 }}>{med.name}</div>
+                  <button onClick={() => handleDelete(med.id, med.name)} disabled={deleting === med.id} title="Remove medicine"
+                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 13, padding: 2, flexShrink: 0, opacity: deleting === med.id ? 0.5 : 1 }}>
                     <i className={`fas ${deleting === med.id ? 'fa-spinner fa-spin' : 'fa-trash'}`}></i>
                   </button>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {med.composition && (
-                    <span style={{ fontSize: 11, color: '#7c3aed', background: '#ede9fe', padding: '2px 8px', borderRadius: 10 }}>
-                      {med.composition}
-                    </span>
-                  )}
-                  <span style={{ fontSize: 11, color: '#6b7280', background: '#f3f4f6', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>
-                    {med.dosageForm || 'Tablet'}
-                  </span>
+                  {med.composition && <span style={{ fontSize: 11, color: '#7c3aed', background: '#ede9fe', padding: '2px 8px', borderRadius: 10 }}>{med.composition}</span>}
+                  <span style={{ fontSize: 11, color: '#6b7280', background: '#f3f4f6', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>{med.dosageForm || 'Tablet'}</span>
                 </div>
               </div>
             ))}
@@ -1566,7 +1303,7 @@ function AddMedicinePanel({ doctorId, token, onBack }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ADD TESTS PANEL  (mirrors AddMedicinePanel)
+   ADD TESTS PANEL
    ═══════════════════════════════════════════════════════════════ */
 function AddTestsPanel({ doctorId, token, onBack }) {
   const [name,       setName]     = useState('')
@@ -1595,21 +1332,13 @@ function AddTestsPanel({ doctorId, token, onBack }) {
     setSaving(true)
     try {
       const res  = await fetch(`${API}/tests/doctor/add`, {
-        method: 'POST',
-        headers: authHeaders(token),
+        method: 'POST', headers: authHeaders(token),
         body: JSON.stringify({ name: name.trim(), category, doctorId }),
       })
       const data = await res.json()
-      if (data.success) {
-        showToast(`${name} added to your test list ✅`, 'success')
-        setName('')
-        fetchMyTests()
-      } else {
-        showToast(data.message || 'Failed to add', 'error')
-      }
-    } catch {
-      showToast('Server error', 'error')
-    }
+      if (data.success) { showToast(`${name} added to your test list ✅`, 'success'); setName(''); fetchMyTests() }
+      else { showToast(data.message || 'Failed to add', 'error') }
+    } catch { showToast('Server error', 'error') }
     setSaving(false)
   }
 
@@ -1617,19 +1346,11 @@ function AddTestsPanel({ doctorId, token, onBack }) {
     if (!window.confirm(`Remove "${testName}" from your list?`)) return
     setDeleting(id)
     try {
-      const res  = await fetch(`${API}/tests/doctor/${id}`, {
-        method: 'DELETE', headers: authHeaders(token),
-      })
+      const res  = await fetch(`${API}/tests/doctor/${id}`, { method: 'DELETE', headers: authHeaders(token) })
       const data = await res.json()
-      if (data.success) {
-        showToast(`${testName} removed`, 'info')
-        fetchMyTests()
-      } else {
-        showToast(data.message || 'Could not delete', 'error')
-      }
-    } catch {
-      showToast('Server error', 'error')
-    }
+      if (data.success) { showToast(`${testName} removed`, 'info'); fetchMyTests() }
+      else { showToast(data.message || 'Could not delete', 'error') }
+    } catch { showToast('Server error', 'error') }
     setDeleting(null)
   }
 
@@ -1642,106 +1363,49 @@ function AddTestsPanel({ doctorId, token, onBack }) {
 
   return (
     <div>
-      {/* Header */}
-      <div style={{
-        background: 'white', borderRadius: 14, padding: '16px 22px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 20,
-        display: 'flex', alignItems: 'center', gap: 14,
-      }}>
-        <button
-          onClick={onBack}
-          style={{
-            background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8,
-            padding: '8px 16px', cursor: 'pointer', fontSize: 13, color: '#374151',
-            fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
-          }}
-        >
+      <div style={{ background: 'white', borderRadius: 14, padding: '16px 22px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 14 }}>
+        <button onClick={onBack} style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 13, color: '#374151', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <i className="fas fa-arrow-left"></i> Back
         </button>
         <div>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#111827' }}>
-            <i className="fas fa-flask" style={{ marginRight: 10, color: '#0891b2' }}></i>
-            My Test List
+            <i className="fas fa-flask" style={{ marginRight: 10, color: '#0891b2' }}></i>My Test List
           </h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6b7280' }}>
-            Add tests you frequently order — auto-suggested when writing appointments
-          </p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6b7280' }}>Add tests you frequently order — auto-suggested when writing appointments</p>
         </div>
       </div>
 
-      {/* Add form */}
-      <div style={{
-        background: 'white', borderRadius: 14, padding: '20px 24px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 20,
-      }}>
+      <div style={{ background: 'white', borderRadius: 14, padding: '20px 24px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 20 }}>
         <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#374151' }}>
-          <i className="fas fa-plus-circle" style={{ marginRight: 8, color: '#0891b2' }}></i>
-          Add New Test
+          <i className="fas fa-plus-circle" style={{ marginRight: 8, color: '#0891b2' }}></i>Add New Test
         </h3>
         <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: 12, marginBottom: 14 }}>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-              Test Name *
-            </label>
-            <input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              placeholder="e.g. Complete Blood Count, Chest X-Ray, ECG..."
-              style={{
-                width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb',
-                borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none',
-              }}
-            />
+            <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Test Name *</label>
+            <input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="e.g. Complete Blood Count, Chest X-Ray, ECG..."
+              style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none' }} />
           </div>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-              Category
-            </label>
-            <select
-              value={category}
-              onChange={e => setCategory(e.target.value)}
-              style={{
-                width: '100%', padding: '9px 10px', border: '1.5px solid #e5e7eb',
-                borderRadius: 8, fontSize: 13, color: '#374151',
-              }}
-            >
-              {['Pathology', 'Radiology', 'Cardiology', 'Other'].map(c => (
-                <option key={c}>{c}</option>
-              ))}
+            <label style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Category</label>
+            <select value={category} onChange={e => setCategory(e.target.value)}
+              style={{ width: '100%', padding: '9px 10px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, color: '#374151' }}>
+              {['Pathology', 'Radiology', 'Cardiology', 'Other'].map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
         </div>
-        <button
-          onClick={handleAdd}
-          disabled={saving}
-          style={{
-            background: saving ? '#94a3b8' : 'linear-gradient(135deg,#0891b2,#0e7490)',
-            color: 'white', border: 'none', borderRadius: 8,
-            padding: '10px 24px', fontWeight: 700, fontSize: 13,
-            cursor: saving ? 'not-allowed' : 'pointer',
-            display: 'flex', alignItems: 'center', gap: 8,
-          }}
-        >
+        <button onClick={handleAdd} disabled={saving}
+          style={{ background: saving ? '#94a3b8' : 'linear-gradient(135deg,#0891b2,#0e7490)', color: 'white', border: 'none', borderRadius: 8, padding: '10px 24px', fontWeight: 700, fontSize: 13, cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
           <i className={`fas ${saving ? 'fa-spinner fa-spin' : 'fa-plus'}`}></i>
           {saving ? 'Adding...' : 'Add Test'}
         </button>
       </div>
 
-      {/* List */}
-      <div style={{
-        background: 'white', borderRadius: 14, padding: '20px 24px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0',
-      }}>
+      <div style={{ background: 'white', borderRadius: 14, padding: '20px 24px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}>
         <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#374151' }}>
-          <i className="fas fa-list" style={{ marginRight: 8, color: '#0891b2' }}></i>
-          My Added Tests ({myTests.length})
+          <i className="fas fa-list" style={{ marginRight: 8, color: '#0891b2' }}></i>My Added Tests ({myTests.length})
         </h3>
-
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 32 }}>
-            <i className="fas fa-spinner fa-spin" style={{ fontSize: 28, color: '#0891b2' }}></i>
-          </div>
+          <div style={{ textAlign: 'center', padding: 32 }}><i className="fas fa-spinner fa-spin" style={{ fontSize: 28, color: '#0891b2' }}></i></div>
         ) : myTests.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
             <i className="fas fa-flask" style={{ fontSize: 42, display: 'block', marginBottom: 14, color: '#d1d5db' }}></i>
@@ -1753,34 +1417,17 @@ function AddTestsPanel({ doctorId, token, onBack }) {
             {myTests.map((test) => {
               const colors = CATEGORY_COLORS[test.category] || CATEGORY_COLORS.Other
               return (
-                <div key={test.id} style={{
-                  background: colors.bg,
-                  border: `1.5px solid ${colors.border}`,
-                  borderRadius: 12, padding: '14px 16px',
-                  display: 'flex', flexDirection: 'column', gap: 8,
-                }}>
+                <div key={test.id} style={{ background: colors.bg, border: `1.5px solid ${colors.border}`, borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: colors.text, flex: 1, paddingRight: 8 }}>
-                      <i className="fas fa-flask" style={{ marginRight: 6, fontSize: 11, opacity: 0.7 }}></i>
-                      {test.name}
+                      <i className="fas fa-flask" style={{ marginRight: 6, fontSize: 11, opacity: 0.7 }}></i>{test.name}
                     </div>
-                    <button
-                      onClick={() => handleDelete(test.id, test.name)}
-                      disabled={deleting === test.id}
-                      title="Remove test"
-                      style={{
-                        background: 'none', border: 'none', color: '#ef4444',
-                        cursor: 'pointer', fontSize: 13, padding: 2, flexShrink: 0,
-                        opacity: deleting === test.id ? 0.5 : 1,
-                      }}
-                    >
+                    <button onClick={() => handleDelete(test.id, test.name)} disabled={deleting === test.id} title="Remove test"
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 13, padding: 2, flexShrink: 0, opacity: deleting === test.id ? 0.5 : 1 }}>
                       <i className={`fas ${deleting === test.id ? 'fa-spinner fa-spin' : 'fa-trash'}`}></i>
                     </button>
                   </div>
-                  <span style={{
-                    fontSize: 11, color: colors.text, background: colors.badge,
-                    padding: '2px 8px', borderRadius: 10, alignSelf: 'flex-start', fontWeight: 600,
-                  }}>
+                  <span style={{ fontSize: 11, color: colors.text, background: colors.badge, padding: '2px 8px', borderRadius: 10, alignSelf: 'flex-start', fontWeight: 600 }}>
                     {test.category || 'Other'}
                   </span>
                 </div>
@@ -1799,115 +1446,52 @@ function AddTestsPanel({ doctorId, token, onBack }) {
 function MyPatientsView({ patients, onViewRecords, onPrescribe, onBack }) {
   return (
     <div>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24,
-        background: 'white', borderRadius: 14, padding: '16px 22px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0',
-      }}>
-        <button
-          onClick={onBack}
-          style={{
-            background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8,
-            padding: '8px 16px', cursor: 'pointer', fontSize: 13, color: '#374151',
-            fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
-          }}
-        >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, background: 'white', borderRadius: 14, padding: '16px 22px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}>
+        <button onClick={onBack} style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 13, color: '#374151', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
           <i className="fas fa-arrow-left"></i> Back
         </button>
         <div>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#111827' }}>
-            <i className="fas fa-user-injured" style={{ marginRight: 10, color: '#2563eb' }}></i>
-            My Patients
+            <i className="fas fa-user-injured" style={{ marginRight: 10, color: '#2563eb' }}></i>My Patients
           </h2>
-          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#6b7280' }}>
-            {patients.length} patient{patients.length !== 1 ? 's' : ''} consulted
-          </p>
+          <p style={{ margin: '2px 0 0', fontSize: 13, color: '#6b7280' }}>{patients.length} patient{patients.length !== 1 ? 's' : ''} consulted</p>
         </div>
       </div>
 
       {patients.length === 0 ? (
-        <div style={{
-          textAlign: 'center', padding: '64px 24px',
-          background: 'white', borderRadius: 16,
-          border: '1.5px dashed #e5e7eb',
-        }}>
+        <div style={{ textAlign: 'center', padding: '64px 24px', background: 'white', borderRadius: 16, border: '1.5px dashed #e5e7eb' }}>
           <i className="fas fa-user-injured" style={{ fontSize: 48, color: '#d1d5db', display: 'block', marginBottom: 16 }}></i>
           <h3 style={{ margin: '0 0 8px', color: '#374151' }}>No patients yet</h3>
-          <p style={{ color: '#9ca3af', margin: 0, fontSize: 14 }}>
-            Patients will appear here after you complete appointments and save records.
-          </p>
+          <p style={{ color: '#9ca3af', margin: 0, fontSize: 14 }}>Patients will appear here after you complete appointments and save records.</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 14 }}>
           {patients.map((a, i) => (
-            <div key={i} style={{
-              background: 'white', border: '1.5px solid #e5e7eb', borderRadius: 16,
-              padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 16,
-              boxShadow: '0 1px 6px rgba(0,0,0,0.05)', transition: 'box-shadow 0.2s',
-            }}
+            <div key={i} style={{ background: 'white', border: '1.5px solid #e5e7eb', borderRadius: 16, padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 1px 6px rgba(0,0,0,0.05)', transition: 'box-shadow 0.2s' }}
               onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(37,99,235,0.1)'}
               onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 6px rgba(0,0,0,0.05)'}
             >
-              <div style={{
-                width: 52, height: 52, borderRadius: '50%',
-                background: 'linear-gradient(135deg,#2563eb,#7c3aed)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'white', fontWeight: 800, fontSize: 18, flexShrink: 0,
-              }}>
+              <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'linear-gradient(135deg,#2563eb,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: 18, flexShrink: 0 }}>
                 {(a.patientName || 'P').charAt(0).toUpperCase()}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 4 }}>
-                  {a.patientName || `Patient #${a.patientId}`}
-                </div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: '#111827', marginBottom: 4 }}>{a.patientName || `Patient #${a.patientId}`}</div>
                 <div style={{ fontSize: 12, color: '#6b7280', display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-                  <span>
-                    <i className="fas fa-calendar-check" style={{ marginRight: 4, color: '#2563eb' }}></i>
-                    Last visit: {formatDate(a.appointmentTime)}
-                  </span>
-                  {a.symptoms && (
-                    <span>
-                      <i className="fas fa-stethoscope" style={{ marginRight: 4, color: '#7c3aed' }}></i>
-                      {a.symptoms.slice(0, 40)}{a.symptoms.length > 40 ? '…' : ''}
-                    </span>
-                  )}
+                  <span><i className="fas fa-calendar-check" style={{ marginRight: 4, color: '#2563eb' }}></i>Last visit: {formatDate(a.appointmentTime)}</span>
+                  {a.symptoms && <span><i className="fas fa-stethoscope" style={{ marginRight: 4, color: '#7c3aed' }}></i>{a.symptoms.slice(0, 40)}{a.symptoms.length > 40 ? '…' : ''}</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                  <span style={{
-                    fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
-                    background: '#dcfce7', color: '#16a34a', border: '1px solid #86efac',
-                  }}>✓ Completed</span>
-                  {a.diagnosis && (
-                    <span style={{
-                      fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
-                      background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe',
-                    }}>
-                      <i className="fas fa-file-medical" style={{ marginRight: 3 }}></i>Record Saved
-                    </span>
-                  )}
+                  <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: '#dcfce7', color: '#16a34a', border: '1px solid #86efac' }}>✓ Completed</span>
+                  {a.diagnosis && <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' }}><i className="fas fa-file-medical" style={{ marginRight: 3 }}></i>Record Saved</span>}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => onViewRecords(a)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    background: 'linear-gradient(135deg,#eff6ff,#dbeafe)',
-                    color: '#1d4ed8', border: '1.5px solid #bfdbfe',
-                    borderRadius: 8, padding: '8px 14px', fontWeight: 700, fontSize: 12, cursor: 'pointer',
-                  }}
-                >
+                <button onClick={() => onViewRecords(a)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'linear-gradient(135deg,#eff6ff,#dbeafe)', color: '#1d4ed8', border: '1.5px solid #bfdbfe', borderRadius: 8, padding: '8px 14px', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
                   <i className="fas fa-folder-open"></i> Records
                 </button>
-                <button
-                  onClick={() => onPrescribe(a)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    background: 'linear-gradient(135deg,#2563eb,#7c3aed)',
-                    color: 'white', border: 'none',
-                    borderRadius: 8, padding: '8px 14px', fontWeight: 700, fontSize: 12, cursor: 'pointer',
-                  }}
-                >
+                <button onClick={() => onPrescribe(a)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'linear-gradient(135deg,#2563eb,#7c3aed)', color: 'white', border: 'none', borderRadius: 8, padding: '8px 14px', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
                   <i className="fas fa-prescription"></i> Prescribe
                 </button>
               </div>
@@ -2021,7 +1605,9 @@ export default function DoctorDashboard() {
       const all = data.appointments || []
       const approved = all.filter(a => a.doctorApproved === true)
       setAllAppointments(approved)
-      const { todayIncome, totalIncome } = calcIncome(approved)
+
+      const fee = profile?.consultationFee || 500
+      const { todayIncome, totalIncome } = calcIncome(approved, fee)
       setIncome({ todayIncome, totalIncome })
 
       const now = new Date()
@@ -2062,7 +1648,7 @@ export default function DoctorDashboard() {
       const data = await res.json()
       if (!mountedRef.current) return
       let all = []
-      if (Array.isArray(data))                   all = data
+      if (Array.isArray(data))                    all = data
       else if (Array.isArray(data.prescriptions)) all = data.prescriptions
       else if (Array.isArray(data.data))          all = data.data
       setPendingPrescriptions(all.filter(p => p.status === 'pending'))
@@ -2169,20 +1755,12 @@ export default function DoctorDashboard() {
                           className={`pd-user-dropdown__item${activeNav === item.key ? ' active' : ''}`}
                           onClick={() => {
                             setUserDropdown(false)
-                            if (item.key === 'profile') {
-                              navigate('/doctor-profile-view')
-                            } else if (item.key === 'patients') {
-                              setActiveNav('patients')
-                            } else if (item.key === 'home') {
-                              setActiveNav('home')
-                            } else if (item.key === 'medicines') {
-                              setActiveNav('medicines')
-                            } else if (item.key === 'mytests') {
-                              setActiveNav('mytests')
-                            } else {
-                              setActiveNav(item.key)
-                              showToast(`${item.label} coming soon!`, 'info')
-                            }
+                            if (item.key === 'profile') navigate('/doctor-profile-view')
+                            else if (item.key === 'patients') setActiveNav('patients')
+                            else if (item.key === 'home') setActiveNav('home')
+                            else if (item.key === 'medicines') setActiveNav('medicines')
+                            else if (item.key === 'mytests') setActiveNav('mytests')
+                            else { setActiveNav(item.key); showToast(`${item.label} coming soon!`, 'info') }
                           }}>
                           <i className={`fas ${item.icon}`}></i> {item.label}
                         </button>
@@ -2224,7 +1802,13 @@ export default function DoctorDashboard() {
                     {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} · {currentTime.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}
                   </span>
                 </div>
-                <IncomeMiniCards todayIncome={income.todayIncome} totalIncome={income.totalIncome} />
+
+                {/* ✅ FIXED: All 3 cards in one row — fee + today income + total income */}
+                <IncomeMiniCards
+                  todayIncome={income.todayIncome}
+                  totalIncome={income.totalIncome}
+                  consultationFee={d?.consultationFee}
+                />
               </div>
               <div style={{ position: 'relative', flexShrink: 0, alignSelf: 'flex-start' }}>
                 <div style={{
@@ -2264,20 +1848,11 @@ export default function DoctorDashboard() {
             )}
 
             {activeNav === 'medicines' && isContentVisible && (
-              <AddMedicinePanel
-                doctorId={doctor.id}
-                token={token}
-                onBack={() => setActiveNav('home')}
-              />
+              <AddMedicinePanel doctorId={doctor.id} token={token} onBack={() => setActiveNav('home')} />
             )}
 
-            {/* ── My Tests Panel ── */}
             {activeNav === 'mytests' && isContentVisible && (
-              <AddTestsPanel
-                doctorId={doctor.id}
-                token={token}
-                onBack={() => setActiveNav('home')}
-              />
+              <AddTestsPanel doctorId={doctor.id} token={token} onBack={() => setActiveNav('home')} />
             )}
 
             {activeNav !== 'patients' && activeNav !== 'medicines' && activeNav !== 'mytests' && isContentVisible && isActive && (
@@ -2294,10 +1869,8 @@ export default function DoctorDashboard() {
                   <div className="dd-closed-badge">
                     <h3>🔴 Clinic Closed</h3>
                     <p>You are currently not accepting patients</p>
-                    <button
-                      onClick={toggleActive}
-                      style={{ background: '#10b981', color: 'white', border: 'none', borderRadius: 8, padding: '10px 24px', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}
-                    >
+                    <button onClick={toggleActive}
+                      style={{ background: '#10b981', color: 'white', border: 'none', borderRadius: 8, padding: '10px 24px', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>
                       Go Active Now
                     </button>
                   </div>
@@ -2327,11 +1900,7 @@ export default function DoctorDashboard() {
                       <i className="fas fa-calendar-day"></i>
                       <h3>Today's Schedule</h3>
                       {schedule.length > 0 && (
-                        <span style={{
-                          marginLeft: 'auto', fontSize: 12,
-                          background: '#dbeafe', color: '#1d4ed8',
-                          padding: '3px 10px', borderRadius: 20, fontWeight: 600,
-                        }}>
+                        <span style={{ marginLeft: 'auto', fontSize: 12, background: '#dbeafe', color: '#1d4ed8', padding: '3px 10px', borderRadius: 20, fontWeight: 600 }}>
                           {schedule.length} appointment{schedule.length !== 1 ? 's' : ''} today
                         </span>
                       )}
@@ -2344,13 +1913,7 @@ export default function DoctorDashboard() {
                         </div>
                       ) : (
                         schedule.map((appt, i) => (
-                          <PatientAppointmentCard
-                            key={appt.id || i}
-                            appt={appt}
-                            index={i}
-                            doctorId={doctor.id}
-                            token={token}
-                          />
+                          <PatientAppointmentCard key={appt.id || i} appt={appt} index={i} doctorId={doctor.id} token={token} />
                         ))
                       )}
                     </div>
@@ -2369,29 +1932,19 @@ export default function DoctorDashboard() {
                               <p>Last: {formatDate(a.appointmentTime)}</p>
                             </div>
                             <div style={{ display: 'flex', gap: 6, flexDirection: 'column' }}>
-                              <button
-                                className="btn btn-outline btn-sm"
-                                style={{ fontSize: 11, padding: '4px 10px' }}
-                                onClick={() => setPatientRecordModal({ patientId: a.patientId, patientName: a.patientName })}
-                              >
+                              <button className="btn btn-outline btn-sm" style={{ fontSize: 11, padding: '4px 10px' }}
+                                onClick={() => setPatientRecordModal({ patientId: a.patientId, patientName: a.patientName })}>
                                 <i className="fas fa-folder-open" style={{ marginRight: 4 }}></i>Records
                               </button>
-                              <button
-                                className="btn btn-outline btn-sm"
-                                style={{ fontSize: 11, padding: '4px 10px' }}
-                                onClick={() => setPrescriptionModal({ patientId: a.patientId, appointmentId: null })}
-                              >
+                              <button className="btn btn-outline btn-sm" style={{ fontSize: 11, padding: '4px 10px' }}
+                                onClick={() => setPrescriptionModal({ patientId: a.patientId, appointmentId: null })}>
                                 Prescribe
                               </button>
                             </div>
                           </div>
                         ))}
                       </div>
-                      <button
-                        className="btn btn-primary btn-full"
-                        style={{ marginTop: '1rem' }}
-                        onClick={() => setActiveNav('patients')}
-                      >
+                      <button className="btn btn-primary btn-full" style={{ marginTop: '1rem' }} onClick={() => setActiveNav('patients')}>
                         <i className="fas fa-users"></i> View All Patients
                       </button>
                     </div>
@@ -2413,14 +1966,11 @@ export default function DoctorDashboard() {
                           </div>
                         ))}
                       </div>
-                      <button
-                        className="btn btn-primary btn-full"
-                        style={{ marginTop: '1rem' }}
+                      <button className="btn btn-primary btn-full" style={{ marginTop: '1rem' }}
                         onClick={() => {
                           const pid = window.prompt('Enter Patient ID:')
                           if (pid) setPrescriptionModal({ patientId: parseInt(pid), appointmentId: null })
-                        }}
-                      >
+                        }}>
                         <i className="fas fa-plus"></i> Write New Prescription
                       </button>
                     </div>
@@ -2437,19 +1987,11 @@ export default function DoctorDashboard() {
                             <div className="request-info">
                               <h4>{r.patientName || `Patient #${r.patientId}`}</h4>
                               <p>{r.symptoms || 'Video Consultation'}</p>
-                              <span className="request-time">
-                                Requested: {r.createdAt ? timeAgoString(r.createdAt) : 'Recently'}
-                              </span>
+                              <span className="request-time">Requested: {r.createdAt ? timeAgoString(r.createdAt) : 'Recently'}</span>
                             </div>
                             <div className="request-actions">
-                              <button className="btn btn-primary btn-sm" title="Accept"
-                                onClick={() => respondToRequest(r.id, 'accepted')}>
-                                <i className="fas fa-check"></i>
-                              </button>
-                              <button className="btn btn-outline btn-sm" title="Reject"
-                                onClick={() => respondToRequest(r.id, 'rejected')}>
-                                <i className="fas fa-times"></i>
-                              </button>
+                              <button className="btn btn-primary btn-sm" title="Accept" onClick={() => respondToRequest(r.id, 'accepted')}><i className="fas fa-check"></i></button>
+                              <button className="btn btn-outline btn-sm" title="Reject" onClick={() => respondToRequest(r.id, 'rejected')}><i className="fas fa-times"></i></button>
                             </div>
                           </div>
                         ))}
@@ -2470,6 +2012,11 @@ export default function DoctorDashboard() {
                           <h4>Dr. {d?.name || '-'}</h4>
                           <p className="specialization">{d?.specialization || '-'}</p>
                           <p className="hospital"><i className="fas fa-hospital"></i> {d?.hospital || d?.regState || 'N/A'}</p>
+                          {d?.consultationFee != null && (
+                            <p style={{ fontSize: 13, color: '#059669', fontWeight: 700, margin: '4px 0 0' }}>
+                              <i className="fas fa-rupee-sign" style={{ marginRight: 4 }}></i>₹{d.consultationFee}/consultation
+                            </p>
+                          )}
                           <div className="profile-stats">
                             <div><span className="number">{d?.experience != null ? d.experience + '+' : '-'}</span><span className="label">Years Exp.</span></div>
                             <div><span className="number">{stats.total}+</span><span className="label">Patients</span></div>
@@ -2482,7 +2029,6 @@ export default function DoctorDashboard() {
                     </div>
                   </div>
 
-                  {/* ── My Medicines dashboard card ── */}
                   <div className="dashboard-card">
                     <div className="card-header">
                       <i className="fas fa-pills" style={{ color: '#7c3aed' }}></i>
@@ -2490,20 +2036,13 @@ export default function DoctorDashboard() {
                     </div>
                     <div className="card-body" style={{ textAlign: 'center', padding: '24px 16px' }}>
                       <i className="fas fa-pills" style={{ fontSize: 36, color: '#e9d5ff', display: 'block', marginBottom: 12 }}></i>
-                      <p style={{ color: '#6b7280', fontSize: 13, margin: '0 0 16px' }}>
-                        Manage your personal medicine list used when writing prescriptions.
-                      </p>
-                      <button
-                        className="btn btn-primary btn-full"
-                        style={{ background: 'linear-gradient(135deg,#7c3aed,#2563eb)', border: 'none' }}
-                        onClick={() => setActiveNav('medicines')}
-                      >
+                      <p style={{ color: '#6b7280', fontSize: 13, margin: '0 0 16px' }}>Manage your personal medicine list used when writing prescriptions.</p>
+                      <button className="btn btn-primary btn-full" style={{ background: 'linear-gradient(135deg,#7c3aed,#2563eb)', border: 'none' }} onClick={() => setActiveNav('medicines')}>
                         <i className="fas fa-plus"></i> Add / View Medicines
                       </button>
                     </div>
                   </div>
 
-                  {/* ── My Tests dashboard card ── */}
                   <div className="dashboard-card">
                     <div className="card-header">
                       <i className="fas fa-flask" style={{ color: '#0891b2' }}></i>
@@ -2511,14 +2050,8 @@ export default function DoctorDashboard() {
                     </div>
                     <div className="card-body" style={{ textAlign: 'center', padding: '24px 16px' }}>
                       <i className="fas fa-flask" style={{ fontSize: 36, color: '#a5f3fc', display: 'block', marginBottom: 12 }}></i>
-                      <p style={{ color: '#6b7280', fontSize: 13, margin: '0 0 16px' }}>
-                        Manage your frequently ordered tests — auto-suggested when ordering pathology or radiology.
-                      </p>
-                      <button
-                        className="btn btn-primary btn-full"
-                        style={{ background: 'linear-gradient(135deg,#0891b2,#0e7490)', border: 'none' }}
-                        onClick={() => setActiveNav('mytests')}
-                      >
+                      <p style={{ color: '#6b7280', fontSize: 13, margin: '0 0 16px' }}>Manage your frequently ordered tests — auto-suggested when ordering pathology or radiology.</p>
+                      <button className="btn btn-primary btn-full" style={{ background: 'linear-gradient(135deg,#0891b2,#0e7490)', border: 'none' }} onClick={() => setActiveNav('mytests')}>
                         <i className="fas fa-plus"></i> Add / View Tests
                       </button>
                     </div>

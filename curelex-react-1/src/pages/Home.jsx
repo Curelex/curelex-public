@@ -4,6 +4,113 @@ import { useAuth } from '../context/AuthContext';
 import { Toast, useToast } from '../components/Toast';
 import { authAPI } from '../api/auth';
 
+const API = 'http://localhost:5000/api';
+
+/* ─────────────────────────────────────────────────────────────────
+   Inline styles for the consultation form.
+   These completely override whatever .consult-form CSS is doing so
+   the inputs are always interactive and visible.
+───────────────────────────────────────────────────────────────── */
+const formStyles = {
+  wrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    width: '100%',
+  },
+  input: {
+    width: '100%',
+    padding: '13px 16px',
+    borderRadius: '10px',
+    border: '1.5px solid rgba(255,255,255,0.25)',
+    background: 'rgba(255,255,255,0.12)',
+    color: '#ffffff',
+    fontSize: '14px',
+    fontFamily: 'inherit',
+    outline: 'none',
+    boxSizing: 'border-box',
+    pointerEvents: 'auto',
+    position: 'relative',
+    zIndex: 1,
+    backdropFilter: 'blur(4px)',
+  },
+  select: {
+    width: '100%',
+    padding: '13px 16px',
+    borderRadius: '10px',
+    border: '1.5px solid rgba(255,255,255,0.25)',
+    background: 'rgba(30,58,138,0.85)',
+    color: '#ffffff',
+    fontSize: '14px',
+    fontFamily: 'inherit',
+    outline: 'none',
+    boxSizing: 'border-box',
+    pointerEvents: 'auto',
+    position: 'relative',
+    zIndex: 1,
+    cursor: 'pointer',
+    appearance: 'auto',
+  },
+  phoneRow: {
+    display: 'flex',
+    gap: '10px',
+  },
+  phoneCode: {
+    width: '110px',
+    flexShrink: 0,
+    padding: '13px 10px',
+    borderRadius: '10px',
+    border: '1.5px solid rgba(255,255,255,0.25)',
+    background: 'rgba(30,58,138,0.85)',
+    color: '#ffffff',
+    fontSize: '14px',
+    fontFamily: 'inherit',
+    outline: 'none',
+    boxSizing: 'border-box',
+    pointerEvents: 'auto',
+    position: 'relative',
+    zIndex: 1,
+    cursor: 'pointer',
+  },
+  phoneInput: {
+    flex: 1,
+    padding: '13px 16px',
+    borderRadius: '10px',
+    border: '1.5px solid rgba(255,255,255,0.25)',
+    background: 'rgba(255,255,255,0.12)',
+    color: '#ffffff',
+    fontSize: '14px',
+    fontFamily: 'inherit',
+    outline: 'none',
+    boxSizing: 'border-box',
+    pointerEvents: 'auto',
+    position: 'relative',
+    zIndex: 1,
+  },
+  submitBtn: {
+    width: '100%',
+    padding: '14px',
+    borderRadius: '10px',
+    border: 'none',
+    background: 'linear-gradient(135deg,#f97316,#ea580c)',
+    color: '#ffffff',
+    fontSize: '15px',
+    fontWeight: '700',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    pointerEvents: 'auto',
+    position: 'relative',
+    zIndex: 1,
+    boxShadow: '0 4px 16px rgba(249,115,22,0.4)',
+    transition: 'opacity 0.2s',
+  },
+};
+
+const placeholderStyle = `
+  .curelex-form-input::placeholder { color: rgba(255,255,255,0.55); }
+  .curelex-form-input:focus { border-color: rgba(255,255,255,0.6) !important; background: rgba(255,255,255,0.18) !important; }
+  .curelex-form-select option { background: #1e3a8a; color: #fff; }
+`;
 
 const Home = () => {
   const navigate = useNavigate();
@@ -21,6 +128,9 @@ const Home = () => {
   const [consultForm, setConsultForm] = useState({
     fullName: '', phoneCode: '+91', mobile: '', email: '', state: '', service: ''
   });
+  const [consultLoading,   setConsultLoading]   = useState(false);
+  const [consultSubmitted, setConsultSubmitted] = useState(false);
+
   const [patientLogin, setPatientLogin] = useState({ email: '', password: '' });
   const [doctorLogin, setDoctorLogin] = useState({ email: '', password: '' });
   const [patientSignUp, setPatientSignUp] = useState({
@@ -33,9 +143,6 @@ const Home = () => {
     photo: null, cert: null
   });
   const [passwordVisible, setPasswordVisible] = useState({ patient: false, doctor: false, doctorLogin: false });
-
-  const DEMO_PATIENT = { email: 'patient@curelex.com', password: 'patient123', name: 'Demo Patient', id: 'P001' };
-  const DEMO_DOCTOR = { email: 'doctor@curelex.com', password: 'doctor123', name: 'Demo Doctor', id: 'D001' };
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'light';
@@ -50,13 +157,37 @@ const Home = () => {
     document.documentElement.setAttribute('data-theme', newTheme);
   };
 
-  const handleConsultSubmit = (e) => {
+  /* ── Consultation Form Submit ── */
+  const handleConsultSubmit = async (e) => {
     e.preventDefault();
-    showToast('Consultation request submitted! We will contact you shortly.', 'success');
-    setConsultForm({ fullName: '', phoneCode: '+91', mobile: '', email: '', state: '', service: '' });
-  };
 
-  
+    // Basic validation
+    if (!consultForm.fullName.trim()) return showToast('Please enter your full name.', 'error');
+    if (!consultForm.mobile.trim())   return showToast('Please enter your mobile number.', 'error');
+    if (!consultForm.email.trim())    return showToast('Please enter your email.', 'error');
+    if (!consultForm.state)           return showToast('Please select your state.', 'error');
+    if (!consultForm.service)         return showToast('Please select a service.', 'error');
+
+    setConsultLoading(true);
+    try {
+      const res = await fetch(`${API}/consultations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(consultForm),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setConsultSubmitted(true);
+        setConsultForm({ fullName: '', phoneCode: '+91', mobile: '', email: '', state: '', service: '' });
+      } else {
+        showToast(data.message || 'Submission failed. Please try again.', 'error');
+      }
+    } catch {
+      showToast('Server error. Please try again.', 'error');
+    } finally {
+      setConsultLoading(false);
+    }
+  };
 
   const handlePatientLogin = async (e) => {
     e.preventDefault();
@@ -97,22 +228,19 @@ const Home = () => {
     setLoading(true);
     try {
       const result = await authAPI.patientRegister({
-          name: patientSignUp.fullName,
-          email: patientSignUp.email,
-          password: patientSignUp.password,
-          mobile: patientSignUp.mobile,
-          // age: patientSignUp.age || null,
-          // gender: patientSignUp.gender || null
-        })
-      
-      if (result.message == "User registered successfully") {
+        name: patientSignUp.fullName,
+        email: patientSignUp.email,
+        password: patientSignUp.password,
+        mobile: patientSignUp.mobile,
+      });
+      if (result.message === 'User registered successfully') {
         showToast('Registration successful! Please login.', 'success');
         setShowPatientSignUp(false);
         setShowLoginModal(true);
         setActiveTab('patient-login');
         setPatientSignUp({ fullName: '', mobile: '', email: '', password: '' });
       } else {
-        showToast(data.message || 'Registration failed', 'error');
+        showToast(result.message || 'Registration failed', 'error');
       }
     } catch (error) {
       showToast('Server error. Please try again.', 'error');
@@ -120,26 +248,22 @@ const Home = () => {
     setLoading(false);
   };
 
-  
   const handleDoctorSignUp = async (e) => {
     e.preventDefault();
     setLoading(true);
-  try {
+    try {
       const result = await authAPI.doctorRegister({
-          name: doctorSignUp.fullName,
-          email: doctorSignUp.email,
-          password: doctorSignUp.password,
-        })
-      console.log(result);
-      if (result.message == "Doctor registered successfully") {
+        name: doctorSignUp.fullName,
+        email: doctorSignUp.email,
+        password: doctorSignUp.password,
+      });
+      if (result.message === 'Doctor registered successfully') {
         showToast('Registration successful! Please login.', 'success');
         setShowDoctorSignUp(false);
         setShowLoginModal(true);
-        setDoctorSignUp({
-          name: '', password: '', email: ''
-        });
+        setDoctorSignUp({ fullName: '', mobile: '', password: '', email: '', age: '', gender: '', specialization: '', regNumber: '', regState: '', hospital: '', experience: '', patients: '', photo: null, cert: null });
       } else {
-        showToast(data.message || 'Registration failed', 'error');
+        showToast(result.message || 'Registration failed', 'error');
       }
     } catch (error) {
       showToast('Server error. Please try again.', 'error');
@@ -159,6 +283,9 @@ const Home = () => {
   return (
     <>
       <Toast />
+
+      {/* Inline style to fix placeholder colors & focus states */}
+      <style>{placeholderStyle}</style>
 
       {/* Navbar */}
       <nav className="navbar" id="navbar">
@@ -222,36 +349,206 @@ const Home = () => {
             </div>
           </div>
 
+          {/* ───────────────── HERO RIGHT (Consultation Form) ───────────────── */}
           <div className="hero-right">
-            <p className="form-heading">Submit your details and unlock a <span className="free">FREE</span> Expert Consultation</p>
-            <form className="consult-form" onSubmit={handleConsultSubmit}>
-              <input type="text" placeholder="Full Name" value={consultForm.fullName} onChange={(e) => setConsultForm({ ...consultForm, fullName: e.target.value })} required />
-              <div className="phone-row">
-                <select value={consultForm.phoneCode} onChange={(e) => setConsultForm({ ...consultForm, phoneCode: e.target.value })}>
-                  <option>+91</option><option>+1</option><option>+44</option>
-                </select>
-                <input type="tel" placeholder="Mobile Number" value={consultForm.mobile} onChange={(e) => setConsultForm({ ...consultForm, mobile: e.target.value })} required />
-              </div>
-              <input type="email" placeholder="Enter your Email" value={consultForm.email} onChange={(e) => setConsultForm({ ...consultForm, email: e.target.value })} required />
-              <select value={consultForm.state} onChange={(e) => setConsultForm({ ...consultForm, state: e.target.value })} required>
-                <option value="">Select your State</option>
-                <option>Uttar Pradesh</option><option>Delhi</option><option>Maharashtra</option>
-                <option>Karnataka</option><option>Tamil Nadu</option><option>West Bengal</option>
-              </select>
-              <select value={consultForm.service} onChange={(e) => setConsultForm({ ...consultForm, service: e.target.value })} required>
-                <option value="">Select Service</option>
-                <option>General Medicine</option><option>Cardiology</option><option>Neurology</option>
-                <option>Orthopedics</option><option>Pediatrics</option>
-              </select>
-              <button type="submit" className="consult-btn">Get Immediate Consultation!</button>
-              <div className="rating-row">
-                <div className="g-logo">G</div>
-                <div>
-                  <p className="rating-label">Average Google Rating</p>
-                  <p className="rating-stars">★★★★½ <span>4.6 out of 5</span></p>
+            {consultSubmitted ? (
+              /* ── SUCCESS STATE ── */
+              <div style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center', gap: 20, padding: '40px 28px',
+                background: 'rgba(255,255,255,0.06)', borderRadius: 16,
+                border: '1.5px solid rgba(255,255,255,0.15)', textAlign: 'center',
+                minHeight: 420,
+              }}>
+                <div style={{
+                  width: 80, height: 80, borderRadius: '50%',
+                  background: 'linear-gradient(135deg,#10b981,#059669)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 36, color: 'white',
+                  boxShadow: '0 0 0 14px rgba(16,185,129,0.15)',
+                  animation: 'pop .4s ease',
+                }}>
+                  <i className="fas fa-check"></i>
                 </div>
+
+                <div>
+                  <h2 style={{ color: 'white', fontSize: 22, fontWeight: 800, margin: '0 0 8px' }}>
+                    Successfully Submitted! 🎉
+                  </h2>
+                  <p style={{ color: 'rgba(255,255,255,0.78)', fontSize: 14, lineHeight: 1.7, margin: 0 }}>
+                    Thank you for reaching out! Our team will review your request and
+                    contact you on your provided{' '}
+                    <strong style={{ color: '#fbbf24' }}>mobile number or email</strong> at the earliest.
+                  </p>
+                </div>
+
+                <div style={{
+                  background: 'rgba(255,255,255,0.08)', borderRadius: 12,
+                  padding: '16px 20px', width: '100%', textAlign: 'left',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                }}>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 700,
+                    textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 12px' }}>
+                    What happens next?
+                  </p>
+                  {[
+                    { icon: 'fa-user-md',        text: 'Admin reviews your service request' },
+                    { icon: 'fa-phone-alt',       text: 'Our team contacts you within 24 hours' },
+                    { icon: 'fa-calendar-check',  text: 'Appointment scheduled at your convenience' },
+                  ].map((s, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: i < 2 ? 10 : 0 }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: '50%',
+                        background: 'rgba(16,185,129,0.2)', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <i className={`fas ${s.icon}`} style={{ fontSize: 13, color: '#10b981' }}></i>
+                      </div>
+                      <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.82)' }}>{s.text}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setConsultSubmitted(false)}
+                  style={{
+                    background: 'rgba(255,255,255,0.12)', border: '1.5px solid rgba(255,255,255,0.25)',
+                    color: 'white', padding: '11px 32px', borderRadius: 10,
+                    fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                  }}>
+                  ← Submit Another Request
+                </button>
               </div>
-            </form>
+            ) : (
+              /* ── CONSULTATION FORM ── */
+              <>
+                <p className="form-heading">
+                  Submit your details and unlock a <span className="free">FREE</span> Expert Consultation
+                </p>
+
+                {/*
+                  KEY FIX: We no longer use className="consult-form" on the <form> tag
+                  because that CSS was likely causing the inputs to appear non-interactive.
+                  All styles are now applied inline via the formStyles object above.
+                */}
+                <form onSubmit={handleConsultSubmit} style={formStyles.wrapper} noValidate>
+
+                  {/* Full Name */}
+                  <input
+                    className="curelex-form-input"
+                    type="text"
+                    placeholder="Full Name"
+                    value={consultForm.fullName}
+                    onChange={(e) => setConsultForm({ ...consultForm, fullName: e.target.value })}
+                    style={formStyles.input}
+                    required
+                  />
+
+                  {/* Phone Code + Mobile */}
+                  <div style={formStyles.phoneRow}>
+                    <select
+                      className="curelex-form-select"
+                      value={consultForm.phoneCode}
+                      onChange={(e) => setConsultForm({ ...consultForm, phoneCode: e.target.value })}
+                      style={formStyles.phoneCode}
+                    >
+                      <option value="+91">+91</option>
+                      <option value="+1">+1</option>
+                      <option value="+44">+44</option>
+                      <option value="+971">+971</option>
+                      <option value="+61">+61</option>
+                    </select>
+                    <input
+                      className="curelex-form-input"
+                      type="tel"
+                      placeholder="Mobile Number"
+                      value={consultForm.mobile}
+                      onChange={(e) => setConsultForm({ ...consultForm, mobile: e.target.value })}
+                      style={formStyles.phoneInput}
+                      required
+                    />
+                  </div>
+
+                  {/* Email */}
+                  <input
+                    className="curelex-form-input"
+                    type="email"
+                    placeholder="Enter your Email"
+                    value={consultForm.email}
+                    onChange={(e) => setConsultForm({ ...consultForm, email: e.target.value })}
+                    style={formStyles.input}
+                    required
+                  />
+
+                  {/* State */}
+                  <select
+                    className="curelex-form-select"
+                    value={consultForm.state}
+                    onChange={(e) => setConsultForm({ ...consultForm, state: e.target.value })}
+                    style={formStyles.select}
+                    required
+                  >
+                    <option value="">Select your State</option>
+                    <option value="Andhra Pradesh">Andhra Pradesh</option>
+                    <option value="Delhi">Delhi</option>
+                    <option value="Gujarat">Gujarat</option>
+                    <option value="Karnataka">Karnataka</option>
+                    <option value="Kerala">Kerala</option>
+                    <option value="Madhya Pradesh">Madhya Pradesh</option>
+                    <option value="Maharashtra">Maharashtra</option>
+                    <option value="Punjab">Punjab</option>
+                    <option value="Rajasthan">Rajasthan</option>
+                    <option value="Tamil Nadu">Tamil Nadu</option>
+                    <option value="Telangana">Telangana</option>
+                    <option value="Uttar Pradesh">Uttar Pradesh</option>
+                    <option value="West Bengal">West Bengal</option>
+                    <option value="Other">Other</option>
+                  </select>
+
+                  {/* Service */}
+                  <select
+                    className="curelex-form-select"
+                    value={consultForm.service}
+                    onChange={(e) => setConsultForm({ ...consultForm, service: e.target.value })}
+                    style={formStyles.select}
+                    required
+                  >
+                    <option value="">Select Service</option>
+                    <option value="General Medicine">General Medicine</option>
+                    <option value="Cardiology">Cardiology</option>
+                    <option value="Neurology">Neurology</option>
+                    <option value="Orthopedics">Orthopedics</option>
+                    <option value="Pediatrics">Pediatrics</option>
+                    <option value="Dermatology">Dermatology</option>
+                    <option value="Gynecology">Gynecology</option>
+                    <option value="Psychiatry">Psychiatry</option>
+                    <option value="Vaccination">Vaccination</option>
+                  </select>
+
+                  {/* Submit */}
+                  <button
+                    type="submit"
+                    disabled={consultLoading}
+                    style={{ ...formStyles.submitBtn, opacity: consultLoading ? 0.75 : 1 }}
+                  >
+                    {consultLoading ? (
+                      <><i className="fas fa-spinner fa-spin" style={{ marginRight: 8 }}></i>Submitting...</>
+                    ) : (
+                      'Get Immediate Consultation!'
+                    )}
+                  </button>
+
+                  {/* Google Rating Row */}
+                  <div className="rating-row">
+                    <div className="g-logo">G</div>
+                    <div>
+                      <p className="rating-label">Average Google Rating</p>
+                      <p className="rating-stars">★★★★½ <span>4.6 out of 5</span></p>
+                    </div>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -411,50 +708,26 @@ const Home = () => {
         <div className="modal active" id="roleSelectionModal">
           <div className="modal-overlay" onClick={() => setShowRoleModal(false)}></div>
           <div className="modal-container modal-small">
-
-{/* HEADER ROW */}
-<div className="flex items-center justify-between mb-4">
-<button className="modal-close" onClick={() => setShowRoleModal(false)}>&times;</button>
-  <div className="auth-header !mb-0">
-    <h2>Select Login Type</h2>
-    <p>Choose your account type to proceed</p>
-  </div>
-</div>
-
-{/* ROLE CARDS */}
-<div className="role-selection">
-  <button
-    className="role-card"
-    onClick={() => {
-      setShowRoleModal(false)
-      setShowLoginModal(true)
-      setActiveTab('patient-login')
-    }}
-  >
-    <div className="role-icon">
-      <i className="fas fa-user-injured"></i>
-    </div>
-    <h3>Patient</h3>
-    <p>Access your health records and connect with doctors</p>
-  </button>
-
-  <button
-    className="role-card"
-    onClick={() => {
-      setShowRoleModal(false)
-      setShowLoginModal(true)
-      setActiveTab('doctor-login')
-    }}
-  >
-    <div className="role-icon">
-      <i className="fas fa-user-md"></i>
-    </div>
-    <h3>Doctor</h3>
-    <p>Manage appointments and patient consultations</p>
-  </button>
-</div>
-
-</div>
+            <div className="flex items-center justify-between mb-4">
+              <button className="modal-close" onClick={() => setShowRoleModal(false)}>&times;</button>
+              <div className="auth-header !mb-0">
+                <h2>Select Login Type</h2>
+                <p>Choose your account type to proceed</p>
+              </div>
+            </div>
+            <div className="role-selection">
+              <button className="role-card" onClick={() => { setShowRoleModal(false); setShowLoginModal(true); setActiveTab('patient-login'); }}>
+                <div className="role-icon"><i className="fas fa-user-injured"></i></div>
+                <h3>Patient</h3>
+                <p>Access your health records and connect with doctors</p>
+              </button>
+              <button className="role-card" onClick={() => { setShowRoleModal(false); setShowLoginModal(true); setActiveTab('doctor-login'); }}>
+                <div className="role-icon"><i className="fas fa-user-md"></i></div>
+                <h3>Doctor</h3>
+                <p>Manage appointments and patient consultations</p>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -463,29 +736,13 @@ const Home = () => {
         <div className="modal active" id="loginModal">
           <div className="modal-overlay" onClick={() => setShowLoginModal(false)}></div>
           <div className="modal-container relative">
-          <button
-    onClick={() => setShowLoginModal(false)}
-    className="absolute left-4 top-4 text-gray-600 text-xl z-10"
-  >
-    <i className="fas fa-arrow-left"></i>
-  </button>
-
-  {/* TABS */}
-  <div className="auth-tabs pl-10">
-    <button
-      className={`auth-tab ${activeTab === 'patient-login' ? 'active' : ''}`}
-      onClick={() => setActiveTab('patient-login')}
-    >
-      Patient
-    </button>
-
-    <button
-      className={`auth-tab ${activeTab === 'doctor-login' ? 'active' : ''}`}
-      onClick={() => setActiveTab('doctor-login')}
-    >
-      Doctor
-    </button>
-  </div>
+            <button onClick={() => setShowLoginModal(false)} className="absolute left-4 top-4 text-gray-600 text-xl z-10">
+              <i className="fas fa-arrow-left"></i>
+            </button>
+            <div className="auth-tabs pl-10">
+              <button className={`auth-tab ${activeTab === 'patient-login' ? 'active' : ''}`} onClick={() => setActiveTab('patient-login')}>Patient</button>
+              <button className={`auth-tab ${activeTab === 'doctor-login' ? 'active' : ''}`} onClick={() => setActiveTab('doctor-login')}>Doctor</button>
+            </div>
 
             {activeTab === 'patient-login' && (
               <div className="auth-form active">
@@ -588,8 +845,8 @@ const Home = () => {
                 <input type="text" id="drFullName" placeholder="Enter your full name" value={doctorSignUp.fullName} onChange={(e) => setDoctorSignUp({ ...doctorSignUp, fullName: e.target.value })} required />
               </div>
               <div className="form-group">
-                <label htmlFor="email">Email Address *</label>
-                <input type="email" id="drMobile" placeholder="Enter your email address" value={doctorSignUp.email} onChange={(e) => setDoctorSignUp({ ...doctorSignUp, email: e.target.value })} required />
+                <label htmlFor="drEmail">Email Address *</label>
+                <input type="email" id="drEmail" placeholder="Enter your email address" value={doctorSignUp.email} onChange={(e) => setDoctorSignUp({ ...doctorSignUp, email: e.target.value })} required />
               </div>
               <div className="form-group">
                 <label htmlFor="drPassword">Create Password *</label>
@@ -607,6 +864,14 @@ const Home = () => {
           </div>
         </div>
       )}
+
+      <style>{`
+        @keyframes pop {
+          0%   { transform: scale(0.5); opacity: 0; }
+          70%  { transform: scale(1.1); }
+          100% { transform: scale(1);   opacity: 1; }
+        }
+      `}</style>
     </>
   );
 };

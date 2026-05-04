@@ -8,15 +8,14 @@ const morgan  = require("morgan");
 // ================= DATABASE =================
 const sequelize = require("./config/mysql");
 
-// ================= MODELS (load ALL before associations) =================
-const User        = require("./models/User");
-const Doctor      = require("./models/Doctor");
-const Appointment = require("./models/Appointment");
-const Test        = require("./models/Test");
+// ================= MODELS =================
+const User                = require("./models/User");
+const Doctor              = require("./models/Doctor");
+const Appointment         = require("./models/Appointment");
+const Test                = require("./models/Test");
+const ConsultationRequest = require("./models/ConsultationRequest"); // ✅ ADDED
 
 // ================= ASSOCIATIONS =================
-// ✅ Must be defined here, after all models are loaded,
-//    so that Sequelize JOIN queries work in controllers.
 Appointment.belongsTo(User,   { foreignKey: "patientId", as: "patient" });
 Appointment.belongsTo(Doctor, { foreignKey: "doctorId",  as: "doctor"  });
 User.hasMany(Appointment,     { foreignKey: "patientId", as: "appointments" });
@@ -30,7 +29,9 @@ const appointmentRoutes  = require("./routes/appointmentRoutes");
 const prescriptionRoutes = require("./routes/prescriptionRoutes");
 const medicineRoutes     = require("./routes/medicineRoutes");
 const dashboardRoutes    = require("./routes/dashboardRoutes");
-const testRoutes = require("./routes/testRoutes");
+const testRoutes         = require("./routes/testRoutes");
+const consultationRoutes = require("./routes/consultationRoutes");
+
 // ================= MIDDLEWARE =================
 const errorHandler = require("./middleware/errorHandler");
 
@@ -44,7 +45,6 @@ app.use(morgan("dev"));
 sequelize.authenticate()
   .then(() => {
     console.log("MySQL Connected Successfully");
-    // alter:true adds new columns (like patientName) without dropping data
     return sequelize.sync({ alter: true });
   })
   .then(() => {
@@ -62,24 +62,20 @@ app.use("/api/appointments",  appointmentRoutes);
 app.use("/api/prescriptions", prescriptionRoutes);
 app.use("/api/medicines",     medicineRoutes);
 app.use("/api/dashboard",     dashboardRoutes);
-app.use("/api/tests", testRoutes);
+app.use("/api/tests",         testRoutes);
+app.use("/api/consultations", consultationRoutes);
 
-// Docs
 app.get("/docs", (req, res) => {
   res.sendFile(path.join(__dirname, "api-docs.html"));
 });
 
-// Health check
 app.get("/", (req, res) => {
   res.send("Curelex Backend Server Running (MySQL)");
 });
 
-// Global Error Handler
 app.use(errorHandler);
 
-// ================= SERVER =================
 const PORT = process.env.PORT || 5000;
-
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
