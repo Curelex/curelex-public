@@ -625,7 +625,7 @@ const Home = () => {
             <span className="supported-location">Prayagraj, Uttar Pradesh</span>
           </div>
           <div className="supported-card">
-            <div className="supported-image"><img src="/assets/download (2).jpg" alt="Startup & Incubation Cell" /></div>
+            <div className="supported-image"><img src="/assets/UU.jpg" alt="Startup & Incubation Cell" /></div>
             <h3>Startup & Incubation Cell</h3><p>United University</p>
             <span className="supported-location">Supporting Innovation</span>
           </div>

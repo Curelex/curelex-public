@@ -29,8 +29,6 @@ const OFFERINGS = [
   { icon: 'fa-hospital',       label: 'Surgeries',                  sub: 'Safe and trusted centres',  color: '#7c3aed', key: 'surgery' },
 ]
 
-
-
 const RECORDS = [
   { icon: 'fa-file-pdf',         title: 'Blood Test Report',  date: 'Jan 10, 2024' },
   { icon: 'fa-file-image',       title: 'X-Ray Chest',        date: 'Dec 20, 2023' },
@@ -52,17 +50,15 @@ const CONSULT_SPECIALITIES = [
 
 /* ═══════════════════════════════════════════════════════════════
    LIVE FOLLOW-UP STATUS CARD
-   Reads from: latest approved appointment with followUpDate set
    ═══════════════════════════════════════════════════════════════ */
 function FollowUpStatusCard({ currentUser, token }) {
-  const [followUp,     setFollowUp]     = useState(null)  // latest appointment with follow-up data
-  const [rxCount,      setRxCount]      = useState(0)     // total medicines prescribed
-  const [loading,      setLoading]      = useState(true)
+  const [followUp, setFollowUp] = useState(null)
+  const [rxCount,  setRxCount]  = useState(0)
+  const [loading,  setLoading]  = useState(true)
 
   useEffect(() => {
     async function load() {
       try {
-        // Fetch all patient appointments + prescriptions in parallel
         const [apptRes, rxRes] = await Promise.all([
           fetch(`${API}/appointments/patient/${currentUser.id}`, { headers: authHeaders(token) }),
           fetch(`${API}/prescriptions/patient/${currentUser.id}`, { headers: authHeaders(token) }),
@@ -73,30 +69,21 @@ function FollowUpStatusCard({ currentUser, token }) {
         const allAppts = apptData.appointments || []
         const allRx    = rxData.prescriptions  || []
 
-        // Find the most recent approved appointment that has a follow-up date filled by doctor
         const withFollowUp = allAppts
           .filter(a => a.doctorApproved && a.followUpDate)
           .sort((a, b) => new Date(b.appointmentTime) - new Date(a.appointmentTime))
 
         if (withFollowUp.length > 0) {
-          const latest = withFollowUp[0]
-
-          // Count medicines from the prescription linked to this appointment
+          const latest   = withFollowUp[0]
           const linkedRx = allRx.find(rx => rx.appointmentId === latest.id)
-          const medCount = linkedRx?.medicines?.length || 0
-
           setFollowUp(latest)
-          setRxCount(medCount)
+          setRxCount(linkedRx?.medicines?.length || 0)
         } else {
-          // Fallback: use latest approved appointment even without follow-up date
           const latestApproved = allAppts
             .filter(a => a.doctorApproved)
             .sort((a, b) => new Date(b.appointmentTime) - new Date(a.appointmentTime))[0] || null
           setFollowUp(latestApproved)
-
-          // Count all medicines across all prescriptions
-          const totalMeds = allRx.reduce((sum, rx) => sum + (rx.medicines?.length || 0), 0)
-          setRxCount(totalMeds)
+          setRxCount(allRx.reduce((sum, rx) => sum + (rx.medicines?.length || 0), 0))
         }
       } catch (err) {
         console.error('FollowUpStatusCard load error:', err)
@@ -106,21 +93,18 @@ function FollowUpStatusCard({ currentUser, token }) {
     load()
   }, [currentUser, token])
 
-  // Determine progress step based on what data is available
   const getProgressStep = () => {
     if (!followUp) return 0
     if (!followUp.doctorApproved) return 0
     if (rxCount > 0 || followUp.diagnosis) {
-      // If follow-up date is in the past → Complete; if future → In Treatment
-      if (followUp.followUpDate && new Date(followUp.followUpDate) < new Date()) return 3 // Complete
-      return 2 // In Treatment
+      if (followUp.followUpDate && new Date(followUp.followUpDate) < new Date()) return 3
+      return 2
     }
-    return 1 // Prescribed (approved but no rx yet)
+    return 1
   }
 
   const activeStep = getProgressStep()
 
-  // Derive treatment status label
   const getStatusLabel = () => {
     if (!followUp) return 'No active consultation'
     if (activeStep === 3) return 'Treatment Complete'
@@ -160,22 +144,18 @@ function FollowUpStatusCard({ currentUser, token }) {
     )
   }
 
-  // Doctor name — comes from appointment relation or fallback
   const doctorName = followUp.doctor?.name
     ? `Dr. ${followUp.doctor.name}`
     : followUp.doctorName
     ? `Dr. ${followUp.doctorName}`
     : `Doctor #${followUp.doctorId}`
 
-  // Next visit — the follow-up date set by doctor in dashboard
-  const nextVisit = followUp.followUpDate
-    ? formatDate(followUp.followUpDate)
-    : 'Not scheduled yet'
+  const nextVisit = followUp.followUpDate ? formatDate(followUp.followUpDate) : 'Not scheduled yet'
 
   const followUpDetails = [
-    { icon: 'fa-user-md',   label: 'Doctor',      value: doctorName                       },
-    { icon: 'fa-calendar',  label: 'Next Visit',  value: nextVisit                        },
-    { icon: 'fa-heartbeat', label: 'Status',      value: getStatusLabel()                 },
+    { icon: 'fa-user-md',   label: 'Doctor',      value: doctorName                                         },
+    { icon: 'fa-calendar',  label: 'Next Visit',  value: nextVisit                                          },
+    { icon: 'fa-heartbeat', label: 'Status',      value: getStatusLabel()                                   },
     { icon: 'fa-pills',     label: 'Medications', value: rxCount > 0 ? `${rxCount} prescribed` : 'None yet' },
   ]
 
@@ -184,7 +164,6 @@ function FollowUpStatusCard({ currentUser, token }) {
       <div className="pd-card__head">
         <div className="pd-card__head-icon"><i className="fas fa-calendar-check"></i></div>
         <h3>Current Follow-Up Status</h3>
-        {/* Show which appointment this relates to */}
         <span style={{
           marginLeft: 'auto', fontSize: 11, color: '#6b7280',
           background: '#f3f4f6', padding: '3px 10px', borderRadius: 20,
@@ -193,14 +172,11 @@ function FollowUpStatusCard({ currentUser, token }) {
         </span>
       </div>
       <div className="pd-card__body">
-        {/* Progress stepper */}
         <div className="pd-followup-progress">
           {PROGRESS_STEPS.map((label, i) => (
             <div
               key={label}
-              className={`pd-progress-step${
-                i < activeStep ? ' done' : i === activeStep ? ' active' : ''
-              }`}
+              className={`pd-progress-step${i < activeStep ? ' done' : i === activeStep ? ' active' : ''}`}
             >
               <div className="pd-progress-step__dot">
                 <i className={`fas ${i < activeStep ? 'fa-check' : 'fa-circle'}`}></i>
@@ -210,7 +186,6 @@ function FollowUpStatusCard({ currentUser, token }) {
           ))}
         </div>
 
-        {/* Detail rows — live data */}
         <div className="pd-followup-details">
           {followUpDetails.map(d => (
             <div className="pd-detail-row" key={d.label}>
@@ -231,19 +206,11 @@ function FollowUpStatusCard({ currentUser, token }) {
           ))}
         </div>
 
-        {/* Follow-up instructions if doctor left any */}
         {followUp.followUpInstructions && (
           <div style={{
-            marginTop: 14,
-            background: '#fffbeb',
-            border: '1px solid #fde68a',
-            borderRadius: 10,
-            padding: '10px 14px',
-            fontSize: 13,
-            color: '#78350f',
-            display: 'flex',
-            gap: 10,
-            alignItems: 'flex-start',
+            marginTop: 14, background: '#fffbeb', border: '1px solid #fde68a',
+            borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#78350f',
+            display: 'flex', gap: 10, alignItems: 'flex-start',
           }}>
             <i className="fas fa-sticky-note" style={{ color: '#f59e0b', marginTop: 2, flexShrink: 0 }}></i>
             <div>
@@ -255,19 +222,11 @@ function FollowUpStatusCard({ currentUser, token }) {
           </div>
         )}
 
-        {/* Diagnosis note if available */}
         {followUp.diagnosis && (
           <div style={{
-            marginTop: 10,
-            background: '#f0f9ff',
-            border: '1px solid #bae6fd',
-            borderRadius: 10,
-            padding: '10px 14px',
-            fontSize: 13,
-            color: '#0c4a6e',
-            display: 'flex',
-            gap: 10,
-            alignItems: 'flex-start',
+            marginTop: 10, background: '#f0f9ff', border: '1px solid #bae6fd',
+            borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#0c4a6e',
+            display: 'flex', gap: 10, alignItems: 'flex-start',
           }}>
             <i className="fas fa-stethoscope" style={{ color: '#0284c7', marginTop: 2, flexShrink: 0 }}></i>
             <div>
@@ -292,23 +251,20 @@ export function DoctorCard({ doc, onBook }) {
   return (
     <div style={{
       border: `1.5px solid ${isApproved ? '#d1fae5' : '#e5e7eb'}`,
-      borderRadius: 14,
-      padding: '18px 20px',
+      borderRadius: 14, padding: '18px 20px',
       background: isApproved ? '#fff' : '#f9fafb',
       opacity: isApproved ? 1 : 0.55,
       filter: isApproved ? 'none' : 'grayscale(60%)',
-      transition: 'all 0.2s',
-      display: 'flex',
-      gap: 16,
-      alignItems: 'flex-start',
-      position: 'relative',
+      transition: 'all 0.2s', display: 'flex', gap: 16,
+      alignItems: 'flex-start', position: 'relative',
       boxShadow: isApproved ? '0 2px 12px rgba(0,179,134,0.08)' : 'none',
     }}>
       <div style={{ position: 'relative', flexShrink: 0 }}>
         {doc.photoUrl ? (
-          <img src={doc.photoUrl} alt={doc.name}
-            style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover',
-              border: `2.5px solid ${isApproved ? '#00b386' : '#d1d5db'}` }} />
+          <img src={doc.photoUrl} alt={doc.name} style={{
+            width: 64, height: 64, borderRadius: '50%', objectFit: 'cover',
+            border: `2.5px solid ${isApproved ? '#00b386' : '#d1d5db'}`,
+          }} />
         ) : (
           <div style={{
             width: 64, height: 64, borderRadius: '50%',
@@ -368,13 +324,12 @@ export function DoctorCard({ doc, onBook }) {
         </div>
 
         {isApproved && onBook && (
-          <button onClick={() => onBook(doc)}
-            style={{
-              background: 'linear-gradient(135deg,#00b386,#2d6be4)',
-              color: 'white', border: 'none', borderRadius: 8,
-              padding: '7px 18px', fontSize: 13, fontWeight: 600,
-              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
-            }}>
+          <button onClick={() => onBook(doc)} style={{
+            background: 'linear-gradient(135deg,#00b386,#2d6be4)',
+            color: 'white', border: 'none', borderRadius: 8,
+            padding: '7px 18px', fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+          }}>
             <i className="fas fa-calendar-plus"></i> Book Appointment
           </button>
         )}
@@ -403,8 +358,7 @@ function DoctorsModal({ onClose, token, onBook }) {
       try {
         const res  = await fetch(`${API}/doctors`, { headers: authHeaders(token) })
         const data = await res.json()
-        const list = data.doctors || (Array.isArray(data) ? data : [])
-        setDoctors(list)
+        setDoctors(data.doctors || (Array.isArray(data) ? data : []))
       } catch (err) {
         console.error('Failed to load doctors:', err)
       } finally {
@@ -464,7 +418,7 @@ function DoctorsModal({ onClose, token, onBook }) {
                 width: '100%', padding: '10px 12px 10px 36px',
                 border: '1.5px solid #e5e7eb', borderRadius: 10,
                 fontSize: 14, outline: 'none', boxSizing: 'border-box',
-                fontFamily: 'inherit', color: '#1f2937', transition: 'border-color 0.2s'
+                fontFamily: 'inherit', color: '#1f2937', transition: 'border-color 0.2s',
               }}
               onFocus={e => e.target.style.borderColor = '#00b386'}
               onBlur={e  => e.target.style.borderColor = '#e5e7eb'}
@@ -479,7 +433,7 @@ function DoctorsModal({ onClose, token, onBook }) {
                   borderColor: filterSpec === spec ? '#00b386' : '#e5e7eb',
                   background:  filterSpec === spec ? '#00b386' : '#fff',
                   color:       filterSpec === spec ? '#fff'    : '#6b7280',
-                  fontFamily: 'inherit'
+                  fontFamily: 'inherit',
                 }}>
                   {spec}
                 </button>
@@ -512,9 +466,7 @@ function DoctorsModal({ onClose, token, onBook }) {
               No doctors found
             </div>
           ) : (
-            sorted.map(doc => (
-              <DoctorCard key={doc.id} doc={doc} onBook={onBook} />
-            ))
+            sorted.map(doc => <DoctorCard key={doc.id} doc={doc} onBook={onBook} />)
           )}
         </div>
 
@@ -541,7 +493,6 @@ export default function PatientDashboard() {
 
   const [stats,            setStats]            = useState({ upcoming: 0, prescriptions: 0, total: 0, doctors: 0 })
   const [appointments,     setAppointments]     = useState({ approved: [], pending: [], expired: [] })
-
   const [prescriptions,    setPrescriptions]    = useState([])
   const [viewPrescription, setViewPrescription] = useState(null)
   const [appointmentModal, setAppointmentModal] = useState(false)
@@ -602,8 +553,6 @@ export default function PatientDashboard() {
 
       setStats(s => ({ ...s, upcoming: approved.length, total: all.length, doctors: uniqueDoctors }))
       setAppointments({ approved, pending, expired })
-
-
     } catch (err) { console.error(err) }
   }
 
@@ -963,31 +912,6 @@ export default function PatientDashboard() {
                           </div>
                         </div>
                       ))}
-                    </div>
-                  </div>
-
-                  {/* Current Symptoms */}
-                  <div className="pd-card">
-                    <div className="pd-card__head">
-                      <div className="pd-card__head-icon"><i className="fas fa-thermometer-half"></i></div>
-                      <h3>Current Symptoms</h3>
-                    </div>
-                    <div className="pd-card__body">
-                      {[
-                        { name: 'Fever & Cold', date: 'Jan 15, 2024', status: 'pending'  },
-                        { name: 'Headache',     date: 'Jan 14, 2024', status: 'resolved' },
-                      ].map(s => (
-                        <div className="pd-symptom-item" key={s.name}>
-                          <div className={`pd-symptom-dot pd-symptom-dot--${s.status}`}></div>
-                          <div className="pd-symptom-info"><h4>{s.name}</h4><p>Reported: {s.date}</p></div>
-                          <span className={`badge ${s.status === 'pending' ? 'badge--yellow' : 'badge--green'}`}>
-                            {s.status === 'pending' ? 'Under Review' : 'Resolved'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="pd-card__footer">
-                      <button className="pd-btn pd-btn--outline pd-btn--full"><i className="fas fa-plus"></i> Report New Symptom</button>
                     </div>
                   </div>
 

@@ -13,7 +13,7 @@ const User                = require("./models/User");
 const Doctor              = require("./models/Doctor");
 const Appointment         = require("./models/Appointment");
 const Test                = require("./models/Test");
-const ConsultationRequest = require("./models/ConsultationRequest"); // ✅ ADDED
+const ConsultationRequest = require("./models/ConsultationRequest");
 
 // ================= ASSOCIATIONS =================
 Appointment.belongsTo(User,   { foreignKey: "patientId", as: "patient" });

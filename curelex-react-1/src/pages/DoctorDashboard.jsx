@@ -7,12 +7,9 @@ import { API, authHeaders, formatDate, formatTime, timeAgoString } from '../util
 /* ─── Doctor Nav Items ───────────────────────────────────────── */
 const NAV_ITEMS = [
   { icon: 'fa-home',                    label: 'Dashboard',            key: 'home'         },
-  { icon: 'fa-calendar-check',          label: 'My Appointments',      key: 'appointments' },
   { icon: 'fa-user-injured',            label: 'My Patients',          key: 'patients'     },
-  { icon: 'fa-prescription-bottle-alt', label: 'Prescriptions',        key: 'prescriptions'},
   { icon: 'fa-video',                   label: 'Video Consultations',  key: 'video'        },
   { icon: 'fa-file-medical-alt',        label: 'Medical Reports',      key: 'reports'      },
-  { icon: 'fa-chart-bar',               label: 'Analytics',            key: 'analytics'    },
   { icon: 'fa-comment-dots',            label: 'Feedback',             key: 'feedback'     },
   { icon: 'fa-pills',                   label: 'My Medicines',         key: 'medicines'    },
   { icon: 'fa-flask',                   label: 'My Tests',             key: 'mytests'      },
@@ -1094,35 +1091,12 @@ function AvailabilityToggle({ isActive, onToggle }) {
 }
 
 /* ─── Income Mini Cards ──────────────────────────────────────── */
-// ✅ FIXED: All 3 cards in one row — consultationFee, todayIncome, totalIncome
-function IncomeMiniCards({ todayIncome, totalIncome, consultationFee }) {
+// ✅ Only Today's Income + Total Income shown here.
+// Consultation Fee is shown in the doctor's profile page instead.
+function IncomeMiniCards({ todayIncome, totalIncome }) {
   const fmt = (n) => '₹' + n.toLocaleString('en-IN')
   return (
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14 }}>
-
-      {/* Consultation Fee Card */}
-      {consultationFee && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          background: 'linear-gradient(135deg,#ecfdf5,#d1fae5)',
-          border: '1.5px solid #6ee7b7', borderRadius: 12, padding: '10px 16px', minWidth: 160,
-        }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: '50%',
-            background: 'linear-gradient(135deg,#10b981,#059669)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          }}>
-            <i className="fas fa-rupee-sign" style={{ color: 'white', fontSize: 14 }}></i>
-          </div>
-          <div>
-            <div style={{ fontSize: 10, color: '#065f46', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Consultation Fee</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#064e3b', lineHeight: 1.2 }}>
-              ₹{consultationFee}
-              <span style={{ fontSize: 11, fontWeight: 500, color: '#059669', marginLeft: 5 }}>per visit</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Today's Income */}
       <div style={{
@@ -1803,11 +1777,10 @@ export default function DoctorDashboard() {
                   </span>
                 </div>
 
-                {/* ✅ FIXED: All 3 cards in one row — fee + today income + total income */}
+                {/* ✅ Only Today's Income + Total Income — fee is in profile page */}
                 <IncomeMiniCards
                   todayIncome={income.todayIncome}
                   totalIncome={income.totalIncome}
-                  consultationFee={d?.consultationFee}
                 />
               </div>
               <div style={{ position: 'relative', flexShrink: 0, alignSelf: 'flex-start' }}>
@@ -2012,11 +1985,6 @@ export default function DoctorDashboard() {
                           <h4>Dr. {d?.name || '-'}</h4>
                           <p className="specialization">{d?.specialization || '-'}</p>
                           <p className="hospital"><i className="fas fa-hospital"></i> {d?.hospital || d?.regState || 'N/A'}</p>
-                          {d?.consultationFee != null && (
-                            <p style={{ fontSize: 13, color: '#059669', fontWeight: 700, margin: '4px 0 0' }}>
-                              <i className="fas fa-rupee-sign" style={{ marginRight: 4 }}></i>₹{d.consultationFee}/consultation
-                            </p>
-                          )}
                           <div className="profile-stats">
                             <div><span className="number">{d?.experience != null ? d.experience + '+' : '-'}</span><span className="label">Years Exp.</span></div>
                             <div><span className="number">{stats.total}+</span><span className="label">Patients</span></div>

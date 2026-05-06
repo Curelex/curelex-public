@@ -38,17 +38,17 @@ export default function DoctorProfileView() {
       setForm({
         name: doc.name || '',
         email: doc.email || '',
-        mobile: doc.mobile || doc.phone || '',
+        mobile: doc.mobile || '',
         specialization: doc.specialization || '',
         experience: doc.experience || '',
         qualification: doc.qualification || '',
-        licenseNumber: doc.licenseNumber || doc.regNumber || '',
-        hospital: doc.hospital || doc.currentInstitute || '',
+        licenseNumber: doc.licenseNumber || '',
+        hospital: doc.currentInstitute || '',         // ✅ fixed: backend uses currentInstitute
         address: doc.address || '',
-        consultationCharge: doc.consultationCharge || '',
+        consultationFee: doc.consultationFee || '',   // ✅ fixed: backend uses consultationFee
         bio: doc.bio || '',
       })
-      setPhotoPreview(doc.photo || null)
+      setPhotoPreview(doc.photoUrl || null)           // ✅ fixed: backend uses photoUrl
     } catch {
       const stored = localStorage.getItem('doctor-data')
       if (stored) {
@@ -62,12 +62,12 @@ export default function DoctorProfileView() {
           experience: doc.experience || '',
           qualification: doc.qualification || '',
           licenseNumber: doc.licenseNumber || '',
-          hospital: doc.hospital || '',
+          hospital: doc.currentInstitute || '',
           address: doc.address || '',
-          consultationCharge: doc.consultationCharge || '',
+          consultationFee: doc.consultationFee || '', // ✅ fixed
           bio: doc.bio || '',
         })
-        setPhotoPreview(doc.photo || null)
+        setPhotoPreview(doc.photoUrl || null)         // ✅ fixed
       }
     }
     setLoading(false)
@@ -99,19 +99,19 @@ export default function DoctorProfileView() {
       const data = await res.json()
       if (res.ok) {
         showToast('Profile updated successfully!', 'success')
-        setProfile({ ...profile, ...form, photo: photoPreview })
+        setProfile({ ...profile, ...form, photoUrl: photoPreview }) // ✅ fixed: photoUrl
         setEditing(false)
         const stored = localStorage.getItem('doctor-data')
         if (stored) {
           const doc = JSON.parse(stored)
-          localStorage.setItem('doctor-data', JSON.stringify({ ...doc, ...form, photo: photoPreview }))
+          localStorage.setItem('doctor-data', JSON.stringify({ ...doc, ...form, photoUrl: photoPreview })) // ✅ fixed
         }
       } else {
         showToast(data.message || 'Update failed', 'error')
       }
     } catch {
       showToast('Saved locally (server unreachable)', 'info')
-      setProfile({ ...profile, ...form, photo: photoPreview })
+      setProfile({ ...profile, ...form, photoUrl: photoPreview }) // ✅ fixed
       setEditing(false)
     }
     setSaving(false)
@@ -157,7 +157,7 @@ export default function DoctorProfileView() {
             </button>
           ) : (
             <>
-              <button onClick={() => { setEditing(false); setPhotoPreview(d?.photo || null); setPhotoFile(null) }}
+              <button onClick={() => { setEditing(false); setPhotoPreview(d?.photoUrl || null); setPhotoFile(null) }}
                 style={{ background: 'white', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 10, padding: '9px 20px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
                 Cancel
               </button>
@@ -218,11 +218,11 @@ export default function DoctorProfileView() {
                 Dr. {d?.name || doctor?.name}
               </h1>
               <span style={{
-                background: d?.verificationStatus === 'approved' || d?.isApproved ? '#dcfce7' : '#fef9c3',
-                color: d?.verificationStatus === 'approved' || d?.isApproved ? '#15803d' : '#854d0e',
+                background: d?.verificationStatus === 'approved' ? '#dcfce7' : '#fef9c3',
+                color: d?.verificationStatus === 'approved' ? '#15803d' : '#854d0e',
                 fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
               }}>
-                {d?.verificationStatus === 'approved' || d?.isApproved ? '✓ Verified' : 'Pending Verification'}
+                {d?.verificationStatus === 'approved' ? '✓ Verified' : 'Pending Verification'}
               </span>
             </div>
             {d?.specialization && (
@@ -235,10 +235,10 @@ export default function DoctorProfileView() {
                 <i className="fas fa-graduation-cap" style={{ marginRight: 6 }}></i>{d.qualification}
               </p>
             )}
-            {(d?.hospital || d?.currentInstitute) && (
+            {d?.currentInstitute && (  /* ✅ fixed: was d.hospital || d.currentInstitute */
               <p style={{ margin: '0 0 4px', color: '#6b7280', fontSize: 14 }}>
                 <i className="fas fa-hospital" style={{ marginRight: 6, color: '#10b981' }}></i>
-                {d.hospital || d.currentInstitute}
+                {d.currentInstitute}
               </p>
             )}
             {d?.email && (
@@ -251,9 +251,27 @@ export default function DoctorProfileView() {
           {/* Stats */}
           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
             {[
-              { label: 'Experience', value: d?.experience ? `${d.experience} yrs` : '—', icon: 'fa-briefcase', color: '#2563eb' },
-              { label: 'Patients',   value: d?.totalPatients || '—',                       icon: 'fa-users',    color: '#10b981' },
-              { label: 'Fee',        value: d?.consultationCharge ? `₹${d.consultationCharge}` : '—', icon: 'fa-rupee-sign', color: '#f59e0b' },
+              {
+                label: 'Experience',
+                value: d?.experience ? `${d.experience} yrs` : '—',
+                icon: 'fa-briefcase',
+                color: '#2563eb'
+              },
+              {
+                label: 'Patients',
+                value: d?.totalPatients || '—',
+                icon: 'fa-users',
+                color: '#10b981'
+              },
+              {
+                // ✅ FIXED: was consultationCharge, backend field is consultationFee
+                label: 'Fee',
+                value: (d?.consultationFee || form.consultationFee)
+                  ? `₹${d?.consultationFee || form.consultationFee}`
+                  : '—',
+                icon: 'fa-rupee-sign',
+                color: '#f59e0b'
+              },
             ].map(s => (
               <div key={s.label} style={{ textAlign: 'center', minWidth: 64 }}>
                 <div style={{ fontSize: 22, color: s.color, marginBottom: 4 }}>
@@ -275,16 +293,17 @@ export default function DoctorProfileView() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
             {[
-              { label: 'Full Name',             key: 'name',               icon: 'fa-user',           type: 'text'   },
-              { label: 'Email',                 key: 'email',              icon: 'fa-envelope',       type: 'email'  },
-              { label: 'Mobile Number',         key: 'mobile',             icon: 'fa-phone',          type: 'tel'    },
-              { label: 'Specialization',        key: 'specialization',     icon: 'fa-stethoscope',    type: 'select', options: SPECIALIZATIONS },
-              { label: 'Qualification',         key: 'qualification',      icon: 'fa-graduation-cap', type: 'text'   },
-              { label: 'Years of Experience',   key: 'experience',         icon: 'fa-briefcase',      type: 'number' },
-              { label: 'License / Reg. Number', key: 'licenseNumber',      icon: 'fa-id-badge',       type: 'text'   },
-              { label: 'Hospital / Clinic',     key: 'hospital',           icon: 'fa-hospital',       type: 'text'   },
-              { label: 'Address',               key: 'address',            icon: 'fa-map-marker-alt', type: 'text'   },
-              { label: 'Consultation Fee (₹)',  key: 'consultationCharge', icon: 'fa-rupee-sign',     type: 'number' },
+              { label: 'Full Name',             key: 'name',            icon: 'fa-user',           type: 'text'   },
+              { label: 'Email',                 key: 'email',           icon: 'fa-envelope',       type: 'email'  },
+              { label: 'Mobile Number',         key: 'mobile',          icon: 'fa-phone',          type: 'tel'    },
+              { label: 'Specialization',        key: 'specialization',  icon: 'fa-stethoscope',    type: 'select', options: SPECIALIZATIONS },
+              { label: 'Qualification',         key: 'qualification',   icon: 'fa-graduation-cap', type: 'text'   },
+              { label: 'Years of Experience',   key: 'experience',      icon: 'fa-briefcase',      type: 'number' },
+              { label: 'License / Reg. Number', key: 'licenseNumber',   icon: 'fa-id-badge',       type: 'text'   },
+              { label: 'Hospital / Clinic',     key: 'hospital',        icon: 'fa-hospital',       type: 'text'   },
+              { label: 'Address',               key: 'address',         icon: 'fa-map-marker-alt', type: 'text'   },
+              // ✅ FIXED: key changed from consultationCharge to consultationFee
+              { label: 'Consultation Fee (₹)',  key: 'consultationFee', icon: 'fa-rupee-sign',     type: 'number' },
             ].map(field => (
               <div key={field.key}>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6b7280', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
@@ -345,7 +364,7 @@ export default function DoctorProfileView() {
 
           {editing && (
             <div style={{ marginTop: 28, display: 'flex', gap: 12, justifyContent: 'flex-end', paddingTop: 20, borderTop: '1px solid #f0f0f0' }}>
-              <button onClick={() => { setEditing(false); setPhotoPreview(d?.photo || null); setPhotoFile(null) }}
+              <button onClick={() => { setEditing(false); setPhotoPreview(d?.photoUrl || null); setPhotoFile(null) }}
                 style={{ background: 'white', color: '#6b7280', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '11px 24px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>
                 Cancel
               </button>

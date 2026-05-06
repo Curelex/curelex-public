@@ -29,7 +29,6 @@ const CONCERNS = [
    ══════════════════════════════════════════════════════════ */
 function DoctorCard({ doc, onConsult }) {
   const [hovered, setHovered] = useState(false)
-
   const isAvailable = doc.verificationStatus === 'approved' && doc.isActive === true
 
   return (
@@ -39,22 +38,16 @@ function DoctorCard({ doc, onConsult }) {
       style={{
         background: isAvailable ? '#fff' : '#f9fafb',
         border: `1.5px solid ${hovered ? '#2563eb' : '#e5e7eb'}`,
-        borderRadius: 20,
-        padding: '20px 20px 16px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 12,
+        borderRadius: 20, padding: '20px 20px 16px',
+        display: 'flex', flexDirection: 'column', gap: 12,
         transition: 'all 0.22s ease',
         boxShadow: hovered ? '0 8px 28px rgba(37,99,235,0.13)' : '0 2px 8px rgba(0,0,0,0.04)',
         transform: hovered ? 'translateY(-3px)' : 'none',
-        cursor: 'default',
-        position: 'relative',
-        overflow: 'hidden',
+        cursor: 'default', position: 'relative', overflow: 'hidden',
         opacity: isAvailable ? 1 : 0.52,
         filter: isAvailable ? 'none' : 'grayscale(70%)',
       }}
     >
-      {/* Status dot */}
       <span style={{
         position: 'absolute', top: 14, right: 14,
         background: isAvailable ? '#22c55e' : '#9ca3af',
@@ -63,7 +56,6 @@ function DoctorCard({ doc, onConsult }) {
         boxShadow: isAvailable ? '0 0 0 3px rgba(34,197,94,0.2)' : 'none',
       }} />
 
-      {/* Avatar + name */}
       <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
         {doc.photoUrl ? (
           <img src={doc.photoUrl} alt={doc.name} style={{
@@ -78,8 +70,7 @@ function DoctorCard({ doc, onConsult }) {
               : 'linear-gradient(135deg,#f3f4f6,#e5e7eb)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 22, fontWeight: 700,
-            color: isAvailable ? '#2563eb' : '#9ca3af',
-            flexShrink: 0,
+            color: isAvailable ? '#2563eb' : '#9ca3af', flexShrink: 0,
           }}>
             {doc.name?.charAt(0)?.toUpperCase() || 'D'}
           </div>
@@ -99,43 +90,26 @@ function DoctorCard({ doc, onConsult }) {
         </div>
       </div>
 
-      {/* Tags */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {isAvailable ? (
           <>
-            <span style={{ background: '#eff6ff', color: '#2563eb', fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 20 }}>
-              ✓ Verified
-            </span>
-            <span style={{ background: '#f0fdf4', color: '#16a34a', fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 20 }}>
-              🟢 Online Now
-            </span>
+            <span style={{ background: '#eff6ff', color: '#2563eb', fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 20 }}>✓ Verified</span>
+            <span style={{ background: '#f0fdf4', color: '#16a34a', fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 20 }}>🟢 Online Now</span>
           </>
         ) : (
           <span style={{ background: '#f3f4f6', color: '#9ca3af', fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 20 }}>
-            {doc.verificationStatus === 'rejected'
-              ? '✕ Not Available'
-              : doc.verificationStatus === 'approved'
-                ? '🔴 Offline'
-                : '⏳ Pending Approval'}
+            {doc.verificationStatus === 'rejected' ? '✕ Not Available' : doc.verificationStatus === 'approved' ? '🔴 Offline' : '⏳ Pending Approval'}
           </span>
         )}
       </div>
 
-      {/* Stats row */}
       <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#6b7280', flexWrap: 'wrap' }}>
-        {doc.patientsHandeled != null && (
-          <span>👥 {doc.patientsHandeled.toLocaleString()} patients</span>
-        )}
-        {doc.gender && (
-          <span style={{ textTransform: 'capitalize' }}>
-            {doc.gender === 'female' ? '♀' : '♂'} {doc.gender}
-          </span>
-        )}
+        {doc.patientsHandeled != null && <span>👥 {doc.patientsHandeled.toLocaleString()} patients</span>}
+        {doc.gender && <span style={{ textTransform: 'capitalize' }}>{doc.gender === 'female' ? '♀' : '♂'} {doc.gender}</span>}
         {doc.regState && <span>📍 {doc.regState}</span>}
         {isAvailable && <span>⏱ ~5 min wait</span>}
       </div>
 
-      {/* Fee + CTA */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
         {isAvailable ? (
           <>
@@ -173,27 +147,28 @@ function DoctorCard({ doc, onConsult }) {
    ══════════════════════════════════════════════════════════ */
 export default function TelemedicinePage() {
   const { currentUser, token } = useAuth()
-  const navigate  = useNavigate()
-  const location  = useLocation()
+  const navigate = useNavigate()
+  const location = useLocation()
 
-  const [allDoctors,   setAllDoctors]   = useState([])
-  const [loading,      setLoading]      = useState(true)
-  const [activeSpec,   setActiveSpec]   = useState('All')
-  const [searchQuery,  setSearchQuery]  = useState('')
-  const [consultModal, setConsultModal] = useState(null)
+  const [allDoctors,     setAllDoctors]     = useState([])
+  const [loading,        setLoading]        = useState(true)
+  const [activeSpec,     setActiveSpec]     = useState('All')
+  const [searchQuery,    setSearchQuery]    = useState('')
+  const [consultModal,   setConsultModal]   = useState(null)
 
-  // ✅ Booking state
-  const [booking,      setBooking]      = useState(false)
-  const [symptoms,     setSymptoms]     = useState('')
-  const [bookingError, setBookingError] = useState('')
+  // Booking state
+  const [booking,        setBooking]        = useState(false)
+  const [symptoms,       setSymptoms]       = useState('')
+  const [bookingError,   setBookingError]   = useState('')
   const [bookingSuccess, setBookingSuccess] = useState(false)
 
   useEffect(() => {
     if (!currentUser) { navigate('/'); return }
 
-    if (location.state?.filterSpec) setActiveSpec(location.state.filterSpec)
+    if (location.state?.filterSpec)     setActiveSpec(location.state.filterSpec)
     if (location.state?.selectedDoctor) setConsultModal(location.state.selectedDoctor)
 
+    // Load doctors
     ;(async () => {
       try {
         const res  = await fetch(`${API}/doctors`, { headers: authHeaders(token) })
@@ -201,9 +176,9 @@ export default function TelemedicinePage() {
         const list = data.doctors || (Array.isArray(data) ? data : [])
         list.sort((a, b) => {
           const score = (d) => {
-            if (d.verificationStatus === 'approved' && d.isActive) return 0
+            if (d.verificationStatus === 'approved' && d.isActive)  return 0
             if (d.verificationStatus === 'approved' && !d.isActive) return 1
-            if (d.verificationStatus === 'pending') return 2
+            if (d.verificationStatus === 'pending')                  return 2
             return 3
           }
           return score(a) - score(b)
@@ -214,7 +189,15 @@ export default function TelemedicinePage() {
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ✅ Real booking handler — hits POST /appointments/book
+  // Open consult modal — blank symptoms, user types manually
+  const handleOpenConsultModal = (doc) => {
+    setConsultModal(doc)
+    setSymptoms('')
+    setBookingError('')
+    setBookingSuccess(false)
+  }
+
+  // Real booking handler
   const handleConfirmBooking = async () => {
     if (!currentUser) { navigate('/'); return }
     if (!consultModal) return
@@ -222,16 +205,12 @@ export default function TelemedicinePage() {
     setBooking(true)
     setBookingError('')
 
-    // Appointment time = 15 minutes from now by default
     const appointmentTime = new Date(Date.now() + 15 * 60 * 1000).toISOString()
 
     try {
       const res = await fetch(`${API}/appointments`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           patientId:       currentUser.id,
           doctorId:        consultModal.id,
@@ -253,7 +232,6 @@ export default function TelemedicinePage() {
     }
   }
 
-  // Reset modal state when closing
   const closeModal = () => {
     setConsultModal(null)
     setSymptoms('')
@@ -261,8 +239,8 @@ export default function TelemedicinePage() {
     setBookingSuccess(false)
   }
 
-  const onlineDoctors  = allDoctors.filter(d => d.verificationStatus === 'approved' && d.isActive === true)
-  const specs          = ['All', ...new Set(allDoctors.filter(d => d.specialization).map(d => d.specialization))]
+  const onlineDoctors = allDoctors.filter(d => d.verificationStatus === 'approved' && d.isActive === true)
+  const specs         = ['All', ...new Set(allDoctors.filter(d => d.specialization).map(d => d.specialization))]
 
   const filtered = allDoctors.filter(d => {
     const matchSpec   = activeSpec === 'All' || d.specialization === activeSpec
@@ -394,7 +372,6 @@ export default function TelemedicinePage() {
       {/* ══ DOCTORS SECTION ══ */}
       <div id="tele-doctors" style={{ maxWidth: 1100, margin: '40px auto', padding: '0 24px' }}>
 
-        {/* Search */}
         <div style={{ marginBottom: 24 }}>
           <div style={{ position: 'relative', maxWidth: 460, marginBottom: 18 }}>
             <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 15, color: '#9ca3af' }}>🔍</span>
@@ -432,7 +409,6 @@ export default function TelemedicinePage() {
           </div>
         </div>
 
-        {/* Header row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
           <div>
             <h2 style={{ fontWeight: 800, fontSize: 20, color: '#111827', margin: 0 }}>
@@ -471,7 +447,7 @@ export default function TelemedicinePage() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
             {filtered.map(doc => (
-              <DoctorCard key={doc.id} doc={doc} onConsult={setConsultModal} />
+              <DoctorCard key={doc.id} doc={doc} onConsult={handleOpenConsultModal} />
             ))}
           </div>
         )}
@@ -496,7 +472,7 @@ export default function TelemedicinePage() {
               animation: 'slideUp 0.22s ease',
             }}
           >
-            {/* ✅ Success state */}
+            {/* Success state */}
             {bookingSuccess ? (
               <div style={{ textAlign: 'center', padding: '12px 0' }}>
                 <div style={{ fontSize: 60, marginBottom: 16 }}>✅</div>
@@ -508,62 +484,34 @@ export default function TelemedicinePage() {
                   The doctor will approve it shortly. You can track the status in your dashboard.
                 </p>
                 <div style={{ display: 'flex', gap: 10 }}>
-                  <button
-                    onClick={closeModal}
-                    style={{
-                      flex: 1, background: '#f3f4f6', color: '#374151',
-                      border: 'none', borderRadius: 12, padding: '12px 0',
-                      fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                    }}
-                  >
+                  <button onClick={closeModal} style={{ flex: 1, background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 12, padding: '12px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                     Close
                   </button>
-                  <button
-                    onClick={() => navigate('/patient-dashboard')}
-                    style={{
-                      flex: 1, background: 'linear-gradient(135deg,#2563eb,#1d4ed8)',
-                      color: '#fff', border: 'none', borderRadius: 12, padding: '12px 0',
-                      fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                    }}
-                  >
+                  <button onClick={() => navigate('/patient-dashboard')} style={{ flex: 1, background: 'linear-gradient(135deg,#2563eb,#1d4ed8)', color: '#fff', border: 'none', borderRadius: 12, padding: '12px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                     Go to Dashboard
                   </button>
                 </div>
               </div>
             ) : (
               <>
-                {/* Normal booking view */}
                 <div style={{ textAlign: 'center', marginBottom: 24 }}>
                   <div style={{ fontSize: 48, marginBottom: 8 }}>📹</div>
-                  <h2 style={{ fontWeight: 800, fontSize: 20, margin: '0 0 6px', color: '#111827' }}>
-                    Book Video Consultation
-                  </h2>
+                  <h2 style={{ fontWeight: 800, fontSize: 20, margin: '0 0 6px', color: '#111827' }}>Book Video Consultation</h2>
                   <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>You're about to consult with</p>
                 </div>
 
                 {/* Doctor info card */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 14,
-                  background: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 20,
-                }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 20 }}>
                   {consultModal.photoUrl ? (
-                    <img src={consultModal.photoUrl} alt={consultModal.name}
-                      style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', border: '2px solid #dbeafe' }} />
+                    <img src={consultModal.photoUrl} alt={consultModal.name} style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', border: '2px solid #dbeafe' }} />
                   ) : (
-                    <div style={{
-                      width: 52, height: 52, borderRadius: '50%',
-                      background: 'linear-gradient(135deg,#dbeafe,#bfdbfe)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 20, fontWeight: 700, color: '#2563eb', flexShrink: 0,
-                    }}>
+                    <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'linear-gradient(135deg,#dbeafe,#bfdbfe)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, color: '#2563eb', flexShrink: 0 }}>
                       {consultModal.name?.charAt(0)?.toUpperCase() || 'D'}
                     </div>
                   )}
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>Dr. {consultModal.name}</div>
-                    {consultModal.specialization && (
-                      <div style={{ fontSize: 13, color: '#6b7280' }}>{consultModal.specialization}</div>
-                    )}
+                    {consultModal.specialization && <div style={{ fontSize: 13, color: '#6b7280' }}>{consultModal.specialization}</div>}
                     <div style={{ fontSize: 12, color: '#22c55e', fontWeight: 600, marginTop: 2 }}>🟢 Available Now</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
@@ -572,10 +520,11 @@ export default function TelemedicinePage() {
                   </div>
                 </div>
 
-                {/* ✅ Symptoms input */}
+                {/* Symptoms textarea — blank, user types manually */}
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>
-                    Describe your symptoms <span style={{ color: '#9ca3af', fontWeight: 400 }}>(optional)</span>
+                    Describe your symptoms{' '}
+                    <span style={{ color: '#9ca3af', fontWeight: 400 }}>(optional)</span>
                   </label>
                   <textarea
                     rows={3}
@@ -584,57 +533,40 @@ export default function TelemedicinePage() {
                     placeholder="e.g. Headache for 3 days, mild fever, fatigue..."
                     style={{
                       width: '100%', padding: '10px 12px',
-                      border: '1.5px solid #e5e7eb', borderRadius: 10,
-                      fontSize: 13, resize: 'none', boxSizing: 'border-box',
-                      outline: 'none', fontFamily: 'inherit', color: '#374151',
+                      border: '1.5px solid #e5e7eb',
+                      borderRadius: 10, fontSize: 13, resize: 'none',
+                      boxSizing: 'border-box', outline: 'none',
+                      fontFamily: 'inherit', color: '#374151',
+                      background: '#fff',
                     }}
                     onFocus={e => e.target.style.borderColor = '#2563eb'}
                     onBlur={e  => e.target.style.borderColor = '#e5e7eb'}
                   />
                 </div>
 
-                {/* Error message */}
                 {bookingError && (
-                  <div style={{
-                    background: '#fef2f2', border: '1px solid #fecaca',
-                    borderRadius: 8, padding: '10px 14px', marginBottom: 14,
-                    fontSize: 13, color: '#dc2626',
-                  }}>
+                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#dc2626' }}>
                     ⚠️ {bookingError}
                   </div>
                 )}
 
-                {/* CTA buttons */}
                 <div style={{ display: 'flex', gap: 12 }}>
-                  <button
-                    onClick={closeModal}
-                    style={{
-                      flex: 1, background: '#f3f4f6', color: '#374151',
-                      border: 'none', borderRadius: 12, padding: '13px 0',
-                      fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                    }}
-                  >
+                  <button onClick={closeModal} style={{ flex: 1, background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 12, padding: '13px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                     Cancel
                   </button>
                   <button
                     onClick={handleConfirmBooking}
                     disabled={booking}
                     style={{
-                      flex: 2, background: booking
-                        ? '#93c5fd'
-                        : 'linear-gradient(135deg,#2563eb,#1d4ed8)',
-                      color: '#fff', border: 'none', borderRadius: 12,
-                      padding: '13px 0', fontSize: 14, fontWeight: 700,
-                      cursor: booking ? 'not-allowed' : 'pointer',
+                      flex: 2, background: booking ? '#93c5fd' : 'linear-gradient(135deg,#2563eb,#1d4ed8)',
+                      color: '#fff', border: 'none', borderRadius: 12, padding: '13px 0',
+                      fontSize: 14, fontWeight: 700, cursor: booking ? 'not-allowed' : 'pointer',
                       fontFamily: 'inherit',
                       boxShadow: booking ? 'none' : '0 4px 14px rgba(37,99,235,0.35)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     }}
                   >
-                    {booking
-                      ? <><span style={{ fontSize: 14 }}>⏳</span> Booking…</>
-                      : <>Confirm & Pay ₹299 →</>
-                    }
+                    {booking ? <><span>⏳</span> Booking…</> : <>Confirm & Pay ₹299 →</>}
                   </button>
                 </div>
               </>
